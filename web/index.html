@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>OVERWORLD — The Seed</title>
+<style>
+  :root{ --bg:#272822; --panel:#3E3D32; --line:#49483E; --fg:#F8F8F2; --dim:#75715E;
+         --green:#A6E22E; --pink:#F92672; --cyan:#66D9EF; --orange:#FD971F; --yellow:#E6DB74; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--fg);
+       font-family:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+       -webkit-font-smoothing:antialiased}
+  #viewport{position:fixed;inset:0}
+  canvas{position:absolute;inset:0}
+  #stage{position:absolute;inset:0;overflow:hidden}
+  @keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+  @keyframes dotp{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+  @keyframes seedpulse{0%,100%{opacity:.45}50%{opacity:1}}
+
+  /* badge */
+  #badge{position:absolute;left:14px;top:12px;z-index:20;display:flex;gap:10px;align-items:center}
+  #badge .box{background:var(--panel);border:2px solid var(--fg);border-radius:10px;
+              padding:7px 12px;box-shadow:0 4px 0 rgba(0,0,0,.45)}
+  #badge .nm{font-weight:800;font-size:13px;letter-spacing:.04em}
+  #badge .sb{font-size:10px;color:var(--dim);margin-top:1px}
+  #pips{display:flex;gap:5px;margin-top:5px}
+  #pips span{width:9px;height:9px;border:2px solid var(--orange);border-radius:50%;background:transparent}
+
+  /* connection + telemetry */
+  #hud{position:absolute;right:14px;top:12px;z-index:20;text-align:right;font-size:10px;color:var(--dim);line-height:1.6}
+  #hud b{color:var(--green);font-weight:700}
+  #hud .off{color:var(--pink)}
+
+  /* the language ticker */
+  #ticker{position:absolute;left:14px;bottom:14px;z-index:20;font-size:9px;line-height:1.5;
+          color:var(--dim);max-width:230px;pointer-events:none;opacity:.85}
+  #ticker div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #ticker .v{font-weight:800}
+
+  /* dialogue */
+  #dlg{position:absolute;left:50%;bottom:calc(26px + var(--kb,0px));transform:translateX(-50%);
+       width:min(620px,92vw);z-index:30;display:none}
+  #dlg .box{background:var(--panel);border:3px solid var(--fg);border-radius:14px;
+            padding:14px 18px 12px;box-shadow:0 6px 0 rgba(0,0,0,.5);cursor:pointer;user-select:none}
+  #dlg .who{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--green);margin-bottom:5px}
+  #dlg .txt{font-size:14.5px;line-height:1.55;min-height:44px}
+  #dlg .arrow{float:right;color:var(--dim);animation:dotp 1.2s infinite;font-size:12px}
+  #dlg .think{display:none;gap:5px;padding:4px 0}
+  #dlg .think span{width:6px;height:6px;border-radius:50%;background:var(--fg);animation:dotp 1s infinite}
+  #dlg .think span:nth-child(2){animation-delay:.2s}
+  #dlg .think span:nth-child(3){animation-delay:.4s}
+
+  /* inputs */
+  #inrow{margin-top:10px;display:none;gap:8px}
+  #inrow input,#inrow textarea{flex:1;background:var(--panel);border:3px solid var(--fg);
+      border-radius:11px;padding:12px 14px;font:600 15px inherit;font-family:inherit;
+      color:var(--fg);outline:none;resize:none;line-height:1.5}
+  #inrow button{background:var(--green);color:var(--bg);border:0;border-radius:11px;
+      font:800 13px inherit;font-family:inherit;padding:0 18px;cursor:pointer;
+      box-shadow:0 4px 0 rgba(0,0,0,.4)}
+  #inrow button.ghost{background:var(--panel);color:var(--fg);border:2px solid var(--dim)}
+  #choices{margin-top:10px;display:none;flex-wrap:wrap;gap:8px}
+  #choices button{background:var(--panel);color:var(--fg);border:2px solid var(--fg);
+      border-radius:11px;padding:10px 14px;font:600 13px inherit;font-family:inherit;
+      cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.4)}
+  #choices button:hover{border-color:var(--green);color:var(--green)}
+
+  /* banner */
+  #banner{position:absolute;z-index:15;opacity:0;text-align:center;white-space:nowrap;
+          transform:translate(-50%,0);transition:opacity .6s}
+  #banner .eyebrow{font-size:10px;letter-spacing:.18em;color:var(--dim);font-weight:700}
+  #banner .title{display:inline-block;margin-top:5px;background:var(--green);color:var(--bg);
+      font-weight:800;font-size:13px;letter-spacing:.04em;padding:6px 14px;border-radius:8px}
+
+  /* pet + minis built in JS */
+  .station{position:absolute;left:0;top:0;width:126px;opacity:0;z-index:10;
+           transition:opacity .5s;text-align:center}
+  .station .pad{width:84px;height:84px;margin:0 auto;border:2px dashed var(--fg);
+                border-radius:11px;background:var(--panel);box-shadow:0 4px 0 rgba(0,0,0,.45)}
+  .station .nm{font-weight:800;font-size:12px;letter-spacing:.05em;margin-top:8px}
+  .station .rl{font-size:10px;color:var(--dim);margin-top:1px}
+  .station .task{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.35;
+      border-top:1px solid var(--line);padding-top:5px;max-width:112px;margin-left:auto;
+      margin-right:auto;animation:seedpulse 1.1s ease-in-out infinite}
+  .station .task.done{color:var(--fg);animation:none}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <canvas id="ground"></canvas>
+  <canvas id="links"></canvas>
+  <div id="stage"></div>
+
+  <div id="badge">
+    <div class="box">
+      <div class="nm" id="b-name">???</div>
+      <div class="sb" id="b-sub">your first agent</div>
+      <div id="pips"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div id="conn" class="off">● connecting…</div>
+    <div>calls <b id="t-calls">0</b> · tok <b id="t-tok">0/0</b></div>
+    <div>cost <b id="t-cost">$0</b></div>
+  </div>
+
+  <div id="ticker"></div>
+  <div id="banner"><div class="eyebrow" id="bn-eyebrow"></div><div class="title" id="bn-title"></div></div>
+
+  <div id="dlg">
+    <div class="box" id="dlgbox">
+      <div class="who" id="who">???</div>
+      <div class="txt"><span id="typed"></span><span class="arrow" id="arrow" style="display:none">▾</span>
+        <span class="think" id="think"><span></span><span></span><span></span></span></div>
+    </div>
+    <div id="inrow">
+      <input id="inp-name" placeholder="give me a name…" maxlength="14" style="display:none">
+      <textarea id="inp-text" rows="2" style="display:none"></textarea>
+      <button id="btn-go">send</button>
+      <button id="btn-surprise" class="ghost" style="display:none">surprise me</button>
+    </div>
+    <div id="choices"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   OVERWORLD frontend — dumb glass.
+   Holds NO truth. Emits gesture envelopes, renders received ones.
+   The worker lives on the other side of the socket.
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+const V = { propose:"#E6DB74", assign:"#66D9EF", develop:"#A6E22E", boost:"#AE81FF",
+            debug:"#F92672", review:"#FD971F", ship:"#F92672", levelup:"#AE81FF", sys:"#75715E" };
+
+/* ---------- transport (the swap-point, client side) ---------- */
+const Transport = {
+  ws:null, open:false, backoff:800,
+  connect(){
+    const proto = location.protocol==="https:"?"wss":"ws";
+    this.ws = new WebSocket(`${proto}://${location.host}/ws`);
+    this.ws.onopen = ()=>{ this.open=true; this.backoff=800;
+      $("conn").textContent="● live"; $("conn").className=""; $("conn").style.color="#A6E22E"; };
+    this.ws.onmessage = e=>{ try{ route(JSON.parse(e.data)); }catch(err){ console.error(err); } };
+    this.ws.onclose = ()=>{ this.open=false;
+      $("conn").textContent="● reconnecting…"; $("conn").className="off";
+      setTimeout(()=>this.connect(), this.backoff); this.backoff=Math.min(8000,this.backoff*1.6); };
+  },
+  send(env){ if(this.open) this.ws.send(JSON.stringify(env)); ticker(env); }
+};
+function gesture(kind, text){
+  Transport.send({ type:"develop", from:"user", to:"seed", payload:{kind, text} });
+}
+
+/* ---------- view state (render mirror only) ---------- */
+const view = {
+  name:"???", trust:0, sprouted:false, busy:false,
+  agents:[],           // {el, taskEl, x,y,tx,ty, spawnT, phase}
+  queue:[],            // pending say groups {lines, expects, mood}
+  lineIdx:0, cur:null, typed:"", expects:null, mood:"focused",
+};
+
+/* ---------- routing: envelopes → render ---------- */
+function route(env){
+  ticker(env);
+  const p = env.payload||{};
+  switch(env.type){
+    case "develop":
+      if(env.from==="seed" && p.say){ view.busy=false; enqueue(p.say, p.expects||null, env.mood); }
+      else if(/^mini\./.test(env.from) && p.finding!=null){ minReport(p.index, p.finding); }
+      break;
+    case "propose": sprout(p); break;
+    case "assign": if(/^mini\./.test(env.to) && view.agents[p.index]){ /* already thinking */ } break;
+    case "ship": /* narration arrives via develop; mood handled there */ break;
+    case "levelup":
+      if(p.name){ view.name=p.name; $("b-name").textContent=p.name; $("who").textContent=p.name; }
+      if(env.points && env.points.trust) setTrust(view.trust+env.points.trust);
+      break;
+    case "sys":
+      if(p.busy){ view.busy=true; renderDlg(); }
+      if(p.calls!=null){ $("t-calls").textContent=p.calls;
+        $("t-tok").textContent=p.tokens_in+"/"+p.tokens_out;
+        $("t-cost").textContent="$"+p.cost_usd; }
+      if(p.error) enqueue(["("+p.error+")"], null, "frustrated");
+      break;
+    case "debug":
+      if(p.error) console.warn("debug:", p.error);
+      break;
+  }
+}
+
+function ticker(env){
+  const t=$("ticker");
+  const d=document.createElement("div");
+  d.innerHTML=`<span class="v" style="color:${V[env.type]||'#F8F8F2'}">${env.type}</span> ${env.from}→${env.to}`;
+  t.prepend(d);
+  while(t.children.length>7) t.removeChild(t.lastChild);
+}
+
+function setTrust(n){ view.trust=Math.min(3,n);
+  [...$("pips").children].forEach((s,i)=> s.style.background = i<view.trust ? "#FD971F" : "transparent");
+}
+
+/* ---------- dialogue engine ---------- */
+let typer=null;
+function enqueue(lines, expects, mood){
+  view.queue.push({lines:[].concat(lines).filter(Boolean), expects, mood:mood||"focused"});
+  if(!view.cur) nextGroup();
+  else renderDlg();
+}
+function nextGroup(){
+  const g=view.queue.shift();
+  if(!g){ view.cur=null; renderDlg(); return; }
+  view.cur=g; view.lineIdx=0; view.expects=g.expects; view.mood=g.mood;
+  hideInputs(); typeLine();
+  renderDlg();
+}
+function typeLine(){
+  clearInterval(typer);
+  const line=view.cur.lines[view.lineIdx]; let i=0; view.typed="";
+  typer=setInterval(()=>{ i++; view.typed=line.slice(0,i);
+    $("typed").textContent=view.typed;
+    if(i>=line.length){ clearInterval(typer); renderDlg(); } },22);
+  $("typed").textContent="";
+}
+function advance(){
+  if(!view.cur||view.busy) return;
+  if($("inrow").style.display==="flex"||$("choices").style.display==="flex") return;
+  const line=view.cur.lines[view.lineIdx];
+  if(view.typed.length<line.length){ clearInterval(typer); view.typed=line;
+    $("typed").textContent=line; renderDlg(); return; }
+  if(view.lineIdx+1<view.cur.lines.length){ view.lineIdx++; typeLine(); return; }
+  // group finished
+  if(view.expects){ openInput(view.expects); view.cur={lines:[line]}; renderDlg(); return; }
+  nextGroup();
+}
+function renderDlg(){
+  const has=!!view.cur||view.busy;
+  $("dlg").style.display=has?"block":"none";
+  $("think").style.display=(view.busy&&!view.cur)?"inline-flex":"none";
+  const line=view.cur?view.cur.lines[view.lineIdx]:"";
+  const full=view.cur&&view.typed.length>=line.length;
+  const inputOpen=$("inrow").style.display==="flex"||$("choices").style.display==="flex";
+  $("arrow").style.display=(view.cur&&full&&!view.busy&&!inputOpen)?"inline":"none";
+  if(view.busy&&!view.cur){ $("typed").textContent=""; }
+}
+
+/* ---------- inputs ---------- */
+const FEELS=["too much to hold.","too many little things.",
+             "i can't see the whole picture.","i'm fine — i just want to do more."];
+function hideInputs(){ $("inrow").style.display="none"; $("choices").style.display="none";
+  $("inp-name").style.display="none"; $("inp-text").style.display="none";
+  $("btn-surprise").style.display="none"; }
+function openInput(kind){
+  hideInputs();
+  if(kind==="feel"){
+    const c=$("choices"); c.innerHTML=""; c.style.display="flex";
+    FEELS.forEach(label=>{ const b=document.createElement("button"); b.textContent=label;
+      b.onclick=()=>{ hideInputs(); view.cur=null; gesture("feel",label); renderDlg(); };
+      c.appendChild(b); });
+    return;
+  }
+  $("inrow").style.display="flex";
+  if(kind==="name"){ $("inp-name").style.display="block"; $("btn-surprise").style.display="block";
+    setTimeout(()=>$("inp-name").focus(),60); }
+  else{ const ta=$("inp-text"); ta.style.display="block"; ta.value="";
+    ta.placeholder = kind==="problem" ? "tell me what's been heavy…  (↵ send · ⇧↵ new line)"
+                   : kind==="clarify" ? "answer "+view.name+"…  (↵ send)"
+                   : "talk to "+view.name+"…  (↵ send)";
+    setTimeout(()=>ta.focus(),60); }
+  $("btn-go").onclick=()=>submit(kind);
+}
+function submit(kind, surprise){
+  let v;
+  if(kind==="name"){
+    const pool=["Pib","Mo","Tuff","Nib","Bun","Ode","Wim","Fen","Tam","Lo","Pia","Sprout"];
+    v=surprise?"":( $("inp-name").value||"" ).trim();
+    if(!v) v=pool[(Math.random()*pool.length)|0];
+  } else {
+    v=$("inp-text").value.trim();
+    if(!v){ $("inp-text").style.borderColor="#F92672";
+      setTimeout(()=>$("inp-text").style.borderColor="#F8F8F2",500); return; }
+  }
+  hideInputs(); view.cur=null; view.busy=(kind!=="name");
+  renderDlg();
+  gesture(kind, v);
+}
+$("btn-surprise").onclick=()=>submit("name",true);
+$("inp-name").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();submit("name");} });
+$("inp-text").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault();
+    submit($("inp-text").placeholder.startsWith("tell")?"problem"
+          :$("inp-text").placeholder.startsWith("answer")?"clarify":"chat"); } });
+$("dlgbox").addEventListener("click",advance);
+window.addEventListener("keydown",e=>{
+  const tag=(document.activeElement&&document.activeElement.tagName)||"";
+  if(tag==="INPUT"||tag==="TEXTAREA")return;
+  if(e.key===" "||e.key==="Enter"){ e.preventDefault(); advance(); } });
+
+/* ---------- world: ground, pet, minis, links ---------- */
+const ground=$("ground"), links=$("links"), stage=$("stage");
+const gctx=ground.getContext("2d"), lctx=links.getContext("2d");
+let vw=0,vh=0,cx=0,cy=0,plotSmall=280,plotBig=520,plotSize=280,plotTarget=280;
+let rootT=0, rootGrow=false, groundDirty=true, T=0;
+
+function layout(){
+  vw=innerWidth; vh=innerHeight; cx=vw/2; cy=vh/2+6;
+  const m=Math.min(vw,vh);
+  plotSmall=Math.max(220,Math.min(330,m*0.30));
+  plotBig=Math.max(440,Math.min(600,m*0.62));
+  const dpr=Math.min(devicePixelRatio||1,2.5);
+  [ground,links].forEach(cv=>{ cv.width=Math.round(vw*dpr); cv.height=Math.round(vh*dpr);
+    cv.style.width=vw+"px"; cv.style.height=vh+"px";
+    cv.getContext("2d").setTransform(dpr,0,0,dpr,0,0); });
+  plotTarget=view.sprouted?plotBig:plotSmall;
+  if(pet&&!view.sprouted){ pet.tx=cx; pet.ty=cy; }
+  if(view.sprouted){ pet.tx=cx; pet.ty=cy-plotBig*0.27; placeMinis(); }
+  groundDirty=true;
+}
+addEventListener("resize",layout);
+
+let pet=null;
+function buildPet(){
+  const el=document.createElement("div");
+  el.style.cssText="position:absolute;left:0;top:0;width:42px;height:42px;overflow:visible;will-change:transform;z-index:12;";
+  el.innerHTML=
+    '<span style="position:absolute;left:8px;top:-13px;width:7px;height:17px;background:#A6E22E;border-radius:4px 4px 0 0;"></span>'+
+    '<span style="position:absolute;right:8px;top:-13px;width:7px;height:17px;background:#A6E22E;border-radius:4px 4px 0 0;"></span>'+
+    '<div style="position:absolute;inset:0;background:#A6E22E;border-radius:10px;box-shadow:0 5px 0 rgba(0,0,0,.5);"></div>'+
+    '<span style="position:absolute;left:11px;top:15px;width:6px;height:8px;background:#272822;border-radius:2px;animation:blink 4.6s infinite;"></span>'+
+    '<span style="position:absolute;right:11px;top:15px;width:6px;height:8px;background:#272822;border-radius:2px;animation:blink 4.6s infinite;"></span>';
+  stage.appendChild(el);
+  pet={el,x:cx,y:cy,tx:cx,ty:cy};
+}
+
+function sprout(p){
+  view.sprouted=true; setTrust(3);
+  $("b-sub").textContent="tending · "+(p.domain||"your life");
+  $("bn-eyebrow").textContent="FIRST PROBLEM · "+(p.domain||"").toUpperCase();
+  $("bn-title").textContent=p.problemName||"";
+  plotTarget=plotBig; pet.tx=cx; pet.ty=cy-plotBig*0.27;
+  rootGrow=true; rootT=0; groundDirty=true;
+  (p.agents||[]).forEach((ag,i)=>{
+    const st=document.createElement("div"); st.className="station";
+    st.innerHTML='<div class="pad"></div><div class="nm">'+esc(ag.name)+'</div>'+
+      '<div class="rl">'+esc(ag.role)+'</div><div class="task">thinking…</div>';
+    stage.appendChild(st);
+    const mini=document.createElement("div");
+    mini.style.cssText="position:absolute;left:0;top:0;width:24px;height:24px;opacity:0;will-change:transform;z-index:12;";
+    mini.innerHTML='<div style="position:absolute;inset:0;background:#66D9EF;border-radius:6px;box-shadow:0 3px 0 rgba(0,0,0,.5);"></div>'+
+      '<span style="position:absolute;left:6px;top:8px;width:4px;height:5px;background:#272822;border-radius:1px;animation:blink 5s infinite;"></span>'+
+      '<span style="position:absolute;right:6px;top:8px;width:4px;height:5px;background:#272822;border-radius:1px;animation:blink 5s infinite;"></span>';
+    stage.appendChild(mini);
+    view.agents.push({el:mini, station:st, taskEl:st.querySelector(".task"),
+      x:pet.x, y:pet.y, tx:cx, ty:cy, spawnT:0, phase:i*0.7});
+  });
+  placeMinis();
+}
+function placeMinis(){
+  const n=view.agents.length; if(!n)return;
+  const gap=n>1?Math.min(150,Math.max(118,plotBig*0.66/(n-1))):0;
+  const sx=cx-gap*(n-1)/2, by=cy+plotBig*0.14;
+  view.agents.forEach((a,i)=>{ a.tx=sx+gap*i; a.ty=by; });
+}
+function minReport(i,finding){
+  const a=view.agents[i]; if(!a)return;
+  a.taskEl.textContent=finding; a.taskEl.className="task done";
+  try{ a.taskEl.animate([{opacity:.25,transform:"translateY(3px)"},{opacity:1,transform:"translateY(0)"}],
+    {duration:300,easing:"ease-out"}); }catch(e){}
+}
+function esc(s){ return String(s??"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])); }
+
+/* ---------- render loop ---------- */
+let last=null;
+function loop(ts){
+  if(last==null)last=ts; let dt=(ts-last)/1000; last=ts; if(dt>0.05)dt=0.05; T+=dt;
+  const before=plotSize; plotSize+=(plotTarget-plotSize)*0.08;
+  if(Math.abs(plotSize-before)>0.25) groundDirty=true;
+  if(rootGrow) rootT=Math.min(1,rootT+dt*0.85);
+
+  if(pet){
+    pet.x+=(pet.tx-pet.x)*0.10; pet.y+=(pet.ty-pet.y)*0.10;
+    const bob=Math.sin(T*2.4)*2.6;
+    pet.el.style.transform=`translate3d(${Math.round(pet.x-21)}px,${Math.round(pet.y-21+bob)}px,0)`;
+  }
+  view.agents.forEach(a=>{
+    a.spawnT=Math.min(1,a.spawnT+dt*1.7);
+    a.x+=(a.tx-a.x)*0.12; a.y+=(a.ty-a.y)*0.12;
+    const bob=Math.sin(T*3.6+a.phase)*2.2;
+    a.el.style.opacity=a.spawnT;
+    a.el.style.transform=`translate3d(${Math.round(a.x-12)}px,${Math.round(a.y-12+bob)}px,0)`;
+    a.station.style.opacity=(0.9*a.spawnT).toFixed(2);
+    a.station.style.transform=`translate3d(${Math.round(a.tx-63)}px,${Math.round(a.ty+16)}px,0)`;
+  });
+  const bn=$("banner");
+  if(view.sprouted){ bn.style.left=cx+"px"; bn.style.top=(cy-plotSize/2-52)+"px";
+    bn.style.opacity=Math.min(1,rootT*1.4).toFixed(2); }
+
+  if(groundDirty){ drawGround(); groundDirty=false; }
+  if(view.agents.length) drawLinks();
+  requestAnimationFrame(loop);
+}
+function drawGround(){
+  const g=gctx; g.clearRect(0,0,vw,vh);
+  g.fillStyle="#272822"; g.fillRect(0,0,vw,vh);
+  g.fillStyle="#3E3D32";
+  const step=30, ox=((cx%step)+step)%step, oy=((cy%step)+step)%step;
+  for(let x=ox;x<vw;x+=step) for(let y=oy;y<vh;y+=step) g.fillRect(x,y,2,2);
+  if(view.sprouted){ const s=plotSize*2.55; g.save();
+    g.strokeStyle="rgba(248,248,242,.07)"; g.setLineDash([7,11]); g.lineWidth=2;
+    g.strokeRect(cx-s/2,cy-s/2,s,s); g.restore(); }
+  const ps=plotSize, px=cx-ps/2, py=cy-ps/2;
+  g.fillStyle="#3E3D32"; g.fillRect(px,py,ps,ps);
+  g.strokeStyle="#A6E22E"; g.lineWidth=3; g.strokeRect(px+1.5,py+1.5,ps-3,ps-3);
+  g.strokeStyle="rgba(248,248,242,.18)"; g.lineWidth=1; g.strokeRect(px+9,py+9,ps-18,ps-18);
+  g.fillStyle="#A6E22E"; const tk=16,th=3;
+  [[px,py,1,1],[px+ps,py,-1,1],[px,py+ps,1,-1],[px+ps,py+ps,-1,-1]].forEach(([X,Y,sx,sy])=>{
+    const x0=sx>0?X:X-tk, y0=sy>0?Y:Y-tk;
+    g.fillRect(x0,sy>0?Y:Y-th,tk,th); g.fillRect(sx>0?X:X-th,y0,th,tk); });
+}
+function drawLinks(){
+  const g=lctx; g.clearRect(0,0,vw,vh);
+  g.lineWidth=2; g.strokeStyle="rgba(166,226,46,.5)"; g.lineCap="round";
+  const x1=pet.x, y1=pet.y+10, t=rootT;
+  view.agents.forEach(a=>{
+    const ex=x1+(a.x-x1)*t, ey=y1+(a.y-6-y1)*t;
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(ex,ey); g.stroke();
+    if(t>0.97){ g.fillStyle="#A6E22E"; g.beginPath(); g.arc(a.x,a.y-6,3,0,7); g.fill(); } });
+  g.fillStyle="#A6E22E"; g.beginPath(); g.arc(x1,y1,3.5,0,7); g.fill();
+}
+
+/* ---------- keyboard-safe area (mobile) ---------- */
+if(window.visualViewport){
+  const vv=window.visualViewport;
+  const upd=()=>{ const kb=Math.max(0,innerHeight-vv.height-vv.offsetTop);
+    document.documentElement.style.setProperty("--kb",kb>80?Math.round(kb)+"px":"0px"); };
+  vv.addEventListener("resize",upd); vv.addEventListener("scroll",upd); upd();
+}
+
+/* ---------- boot ---------- */
+layout(); buildPet(); layout();
+requestAnimationFrame(loop);
+Transport.connect();
+</script>
+</body>
+</html>
