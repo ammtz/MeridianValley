@@ -18,13 +18,15 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .brain import Session
+from . import worldlog
+from .brain import HANDS, Session
 from .envelopes import envelope, validate
 
 log = logging.getLogger("overworld")
@@ -42,17 +44,23 @@ async def index() -> FileResponse:
 
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
+WORKSPACES = worldlog.DATA / "workspaces"
+WORKSPACES.mkdir(exist_ok=True)
+app.mount("/workspace", StaticFiles(directory=WORKSPACES), name="workspace")
+
 
 class Room:
     """One WebSocket = one room = one seed. Worker logic lives here."""
 
     def __init__(self, ws: WebSocket) -> None:
         self.ws = ws
-        self.session = Session()
+        self.sid = uuid.uuid4().hex[:8]
+        self.session = Session(workspace=WORKSPACES / self.sid)
         self.awaiting: str = "name"   # name → feel → problem → clarify* → chat
 
     async def emit(self, env: dict) -> None:
         log.info("emit %s %s→%s", env["type"], env["from"], env["to"])
+        worldlog.log(env, "out", self.sid)
         await self.ws.send_text(json.dumps(env))
 
     async def say(self, lines: list[str], *, expects: str | None = None,
@@ -165,10 +173,15 @@ class Room:
         # minis fire in parallel; each finding lands as its own envelope, live
         async def run(i: int) -> None:
             await self.emit(envelope("assign", "seed", f"mini.{i}",
-                                     {"index": i, "ask": plan["agents"][i]["ask"]}))
-            finding = await s.run_worker(i)
-            await self.emit(envelope("develop", f"mini.{i}", "seed",
-                                     {"index": i, "finding": finding}))
+                                     {"index": i, "ask": plan["agents"][i]["ask"],
+                                      "hands": HANDS}))
+            finding, artifacts = await s.run_worker(i)
+            await self.emit(envelope(
+                "develop", f"mini.{i}", "seed",
+                {"index": i, "finding": finding,
+                 "artifacts": [{"name": a.split("/")[-1],
+                                "url": f"/workspace/{self.sid}/{a}"}
+                               for a in artifacts]}))
             await self.telemetry()
 
         await asyncio.gather(*(run(i) for i in range(len(plan["agents"]))))
@@ -209,6 +222,7 @@ async def ws_endpoint(ws: WebSocket) -> None:
             raw = await ws.receive_text()
             try:
                 env = validate(json.loads(raw))
+                worldlog.log(env, "in", room.sid)
             except (ValueError, json.JSONDecodeError) as e:
                 await room.emit(envelope("sys", "world", "user",
                                          {"error": f"not in the language: {e}"}))

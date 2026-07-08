@@ -85,6 +85,9 @@
       border-top:1px solid var(--line);padding-top:5px;max-width:112px;margin-left:auto;
       margin-right:auto;animation:seedpulse 1.1s ease-in-out infinite}
   .station .task.done{color:var(--fg);animation:none}
+  .station .arts{margin-top:5px;display:flex;flex-direction:column;gap:2px}
+  .station .arts a{font-size:10px;color:var(--cyan);text-decoration:none}
+  .station .arts a:hover{text-decoration:underline;color:var(--green)}
 </style>
 </head>
 <body>
@@ -172,7 +175,7 @@ function route(env){
   switch(env.type){
     case "develop":
       if(env.from==="seed" && p.say){ view.busy=false; enqueue(p.say, p.expects||null, env.mood); }
-      else if(/^mini\./.test(env.from) && p.finding!=null){ minReport(p.index, p.finding); }
+      else if(/^mini\./.test(env.from) && p.finding!=null){ minReport(p.index, p.finding, p.artifacts||[]); }
       break;
     case "propose": sprout(p); break;
     case "assign": if(/^mini\./.test(env.to) && view.agents[p.index]){ /* already thinking */ } break;
@@ -367,9 +370,15 @@ function placeMinis(){
   const sx=cx-gap*(n-1)/2, by=cy+plotBig*0.14;
   view.agents.forEach((a,i)=>{ a.tx=sx+gap*i; a.ty=by; });
 }
-function minReport(i,finding){
+function minReport(i,finding,artifacts){
   const a=view.agents[i]; if(!a)return;
   a.taskEl.textContent=finding; a.taskEl.className="task done";
+  if(artifacts&&artifacts.length){
+    const box=document.createElement("div"); box.className="arts";
+    artifacts.slice(0,4).forEach(f=>{ const l=document.createElement("a");
+      l.href=f.url; l.target="_blank"; l.textContent="📄 "+f.name; box.appendChild(l); });
+    a.station.appendChild(box);
+  }
   try{ a.taskEl.animate([{opacity:.25,transform:"translateY(3px)"},{opacity:1,transform:"translateY(0)"}],
     {duration:300,easing:"ease-out"}); }catch(e){}
 }

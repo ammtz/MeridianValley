@@ -28,14 +28,26 @@ uvicorn server.main:app --reload  →  http://localhost:8000
 
 ## State
 Seed loop live end-to-end: interview (≤2 real clarifying Qs) → decompose →
-parallel minis (findings stream as individual envelopes) → synth → ship →
-persistent in-character chat. Telemetry (calls/tokens/cost) rides sys envelopes.
+parallel minis → synth → ship → persistent in-character chat.
+MINIS HAVE HANDS: run_worker (the swap-point) drives claude-agent-sdk sessions
+with Read/Write/Edit tools in per-session workspaces (data/workspaces/<sid>);
+findings ship with clickable artifact files. Voice-only fallback if SDK/CLI
+absent. WORLD LOG: every envelope (both directions) appends to
+data/world_log.jsonl — labeled episodes (verb, from→to, story, phase, points).
+
+## Learning thesis (three loops, one dataset)
+Closed language → every act is labeled data. Fast: delegation policy is a
+contextual bandit over the envelope log. Medium: verb process trees are
+A/B-able (same reward currency). Slow: stable verbs become LoRA SFT+DPO
+targets. review is where truth enters the world — reward, not bureaucracy.
+Verb semantics changes are constitutional amendments: new word, never a
+silent edit.
 
 ## SUPERSEDED
 - Artifact/sandbox builds (The_Seed_DEMO.html, dc-runtime bundle) — retired.
   This repo is the single source of truth.
 
 ## NEXT MOVE
-Chat re-tasks a specialist live: route a chat message to run_worker(i) with
-new instructions; station updates via the existing develop envelope path.
-First proof of world-as-control-surface.
+Make review real: after ship, user verdict on each artifact (keep/redo) as
+review envelopes with points — the reward channel the three learning loops
+need. Then: chat re-tasks a specialist live (world-as-control-surface).

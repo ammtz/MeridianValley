@@ -10,7 +10,16 @@ import os
 import re
 from typing import Any
 
+from pathlib import Path
+from shutil import which
+
 from anthropic import AsyncAnthropic
+
+try:  # real hands: agent SDK drives the Claude Code CLI
+    from claude_agent_sdk import ClaudeAgentOptions, query as sdk_query
+    HANDS = which("claude") is not None
+except ImportError:  # pragma: no cover
+    HANDS = False
 
 MODEL_ORCH = os.environ.get("OVERWORLD_MODEL_ORCH", "claude-sonnet-4-6")
 MODEL_WORKER = os.environ.get("OVERWORLD_MODEL_WORKER", "claude-haiku-4-5-20251001")
@@ -53,15 +62,17 @@ async def _ask(model: str, system: str, user_or_msgs, max_tokens: int) -> tuple[
 class Session:
     """One human, one seed. Holds interview context and chat history."""
 
-    def __init__(self) -> None:
+    def __init__(self, workspace: Path | None = None) -> None:
         self.name: str = "???"
         self.feel: str = ""
         self.problem: str = ""
         self.clarify: list[dict[str, str]] = []   # [{"q":..., "a":...}]
         self.plan: dict[str, Any] | None = None
         self.findings: list[str] = []
+        self.artifacts: list[list[str]] = []      # per-mini relative file paths
         self.chat_log: list[dict[str, str]] = []
         self.usage: list[dict] = []
+        self.workspace = workspace
 
     # ---------- context ----------
     def interview_ctx(self) -> str:
@@ -141,10 +152,63 @@ class Session:
             raise ValueError("plan had no workable agents")
         self.plan = o
         self.findings = [""] * len(o["agents"])
+        self.artifacts = [[] for _ in o["agents"]]
         return o
 
-    async def run_worker(self, i: int) -> str:
+    async def run_worker(self, i: int) -> tuple[str, list[str]]:
+        """THE SWAP-POINT. Sentence-producing minis were the hollowness;
+        this is where hands got attached. Returns (finding, artifact paths
+        relative to this mini's workspace dir)."""
         ag = self.plan["agents"][i]
+        if HANDS and self.workspace is not None:
+            try:
+                return await asyncio.wait_for(self._run_worker_hands(i, ag), 180)
+            except Exception as e:  # hands failed — degrade to voice
+                self.usage.append({"in": 0, "out": 0, "model": "sdk-error",
+                                   "note": str(e)[:120]})
+        return await self._run_worker_voice(i, ag)
+
+    async def _run_worker_hands(self, i: int, ag: dict) -> tuple[str, list[str]]:
+        wdir = self.workspace / f"{i}_{ag['name'].lower().replace(' ', '_')}"
+        wdir.mkdir(parents=True, exist_ok=True)
+        opts = ClaudeAgentOptions(
+            model=MODEL_WORKER,
+            cwd=str(wdir),
+            allowed_tools=["Read", "Write", "Edit"],
+            permission_mode="acceptEdits",
+            max_turns=8,
+            system_prompt=(
+                f"You are {ag['name']}, a single-purpose specialist whose entire world "
+                f"is: {ag['role']}. You have a working directory and file tools. "
+                "Your job: don't just answer — PRODUCE. Create at least one real, "
+                "useful file in the working directory (a checklist.md, a draft, a "
+                "template, a plan, a script — whatever genuinely serves the task). "
+                "Then reply with 1-2 concrete sentences summarizing what you made "
+                "and your sharpest recommendation. No preamble, no hedging."
+            ),
+        )
+        summary, cost = "", 0.0
+        async for msg in sdk_query(prompt=ag["ask"], options=opts):
+            kind = type(msg).__name__
+            if kind == "AssistantMessage":
+                for block in getattr(msg, "content", []):
+                    if hasattr(block, "text"):
+                        summary = block.text  # keep last text block
+            elif kind == "ResultMessage":
+                summary = getattr(msg, "result", None) or summary
+                cost = getattr(msg, "total_cost_usd", 0.0) or 0.0
+        self.usage.append({"in": 0, "out": 0, "model": "agent-sdk",
+                           "cost_usd": cost})
+        artifacts = sorted(
+            str(p.relative_to(self.workspace))
+            for p in wdir.rglob("*") if p.is_file()
+        )
+        finding = (summary or "").strip()[:400] or "(built quietly.)"
+        self.findings[i] = finding
+        self.artifacts[i] = artifacts
+        return finding, artifacts
+
+    async def _run_worker_voice(self, i: int, ag: dict) -> tuple[str, list[str]]:
         sys = (
             f"You are {ag['name']}, a single-purpose specialist whose entire world is: "
             f"{ag['role']}. You think about ONLY this one job. Answer in 1-2 concrete, "
@@ -158,7 +222,7 @@ class Session:
         except Exception:
             finding = "(this one got stuck — i'll send it back in later.)"
         self.findings[i] = finding
-        return finding
+        return finding, []
 
     async def synth(self) -> dict[str, str]:
         sys = (
@@ -224,6 +288,9 @@ class Session:
         rates = {MODEL_ORCH: (3, 15), MODEL_WORKER: (1, 5)}  # $/M in, out
         total = 0.0
         for u in self.usage:
+            if "cost_usd" in u:
+                total += u["cost_usd"]
+                continue
             rin, rout = rates.get(u["model"], (3, 15))
             total += (u["in"] * rin + u["out"] * rout) / 1e6
         return total
