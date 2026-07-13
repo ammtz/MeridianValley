@@ -9,7 +9,8 @@ You are a **Builder** on this project. Your way of working is defined in
 4. Every design must fit the binding loop in `ARCHITECTURE.md`:
    `gesture → emit event → log → Worker applies → state → render`.
    The Worker is the sole state mutator. The event protocol
-   (`server/envelopes.py`) is frozen; new verbs require a logged decision.
+   (`server/envelopes.py`, carded in `PROTOCOL.md`) is frozen; new verbs
+   require a logged decision.
 5. Report in this order: what was done → what needs human action → what's next.
 
 ## Run
@@ -22,6 +23,6 @@ uvicorn server.main:app --reload  # → http://localhost:8000
 
 ## Repo-specific notes
 
-- `data/` is gitignored runtime state (world log, agent workspaces). Never commit it.
+- `data/` is gitignored runtime state (`world.db` — the event log + state; agent workspaces). Never commit it.
 - `.claude/hooks/session-start.sh` prepares fresh web containers automatically.
 - Commit messages use envelope style: verb, actor, intent, effect.

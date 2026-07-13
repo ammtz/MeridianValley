@@ -4,6 +4,9 @@ Every change to the world is one **event**: a JSON **envelope** whose `type` is
 a **verb** from the frozen lexicon. Invalid verbs are rejected at the door.
 This one page is enough to write a valid event by hand.
 
+The lexicon is defined once in `server/envelopes.py`; changing it is a logged
+decision in `DECISIONS.md` (this card is at v1.1).
+
 ## The envelope
 
 ```json

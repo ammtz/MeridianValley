@@ -11,7 +11,8 @@ Standing decisions. Consult before deciding anything; extrapolate from precedent
 | 5 | 2026-07-11 | Repository markdown is the canonical documentation. External tools are dashboards only. | One source of truth every contributor and agent can read |
 | 6 | 2026-07-11 | Process: agile stories with Fibonacci points, one-week sprints, WIP limit of 1. | Limited contributor time; plan on velocity, not optimism |
 | 7 | 2026-07-11 | All real-world integrations removed from scope (icebox). | Focus on the mission's three deliverables only |
-| 8 | 2026-07-13 | Protocol amendment v1.1 (PROPOSED — awaiting PO sign-off): add world-tier verbs `spawn`, `move`, `kill` to the frozen lexicon. Agents enter, move, and leave space through these three words only. | Epics 1–3 need world-physics events distinct from the work-orchestration verbs; keeps validation/replay guarantees while giving the Worker something to apply to `agents`/`positions` |
+| 8 | 2026-07-13 | Protocol amendment v1.1 **ratified** (via PR #2 merge): world-tier verbs `spawn`, `move`, `kill` join the frozen lexicon. Agents enter, move, and leave space through these three words only. | Epics 1–3 need world-physics events distinct from the work-orchestration verbs; keeps validation/replay guarantees while giving the Worker something to apply to `agents`/`positions` |
+| 9 | 2026-07-13 | For the Epic 1 delivery, the WIP-limit-of-1 was overridden once: all four W-stories were built and shipped as a single batch (PR #2) at Product Owner request. A deliberate one-time exception, not a change to Decision #6. | The Product Owner chose to review the epic as one pile; the default remains WIP = 1 |
 
 ## DOs
 - Delete before adding.
