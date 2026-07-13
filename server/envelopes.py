@@ -9,7 +9,11 @@ from __future__ import annotations
 import time
 from typing import Any
 
-VERBS = {
+# The lexicon, in tiers. Adding a verb is a versioned, logged decision
+# (see DECISIONS.md). Everything on the bus is one of these words.
+
+# Work tier — orchestration of stories and agents (LANGUAGE v1).
+WORK_VERBS = {
     "propose",   # a story/plan enters the world
     "assign",    # work attaches to an agent
     "develop",   # work happening: speech, findings, questions, chat
@@ -18,8 +22,20 @@ VERBS = {
     "review",    # a gate: human judgment requested
     "ship",      # done — the first move exists
     "levelup",   # growth event
-    "sys",       # world machinery: errors, telemetry, lifecycle
 }
+
+# World tier — physical events with spatial effect (amendment v1.1).
+# These are the only verbs that move the world's state tables.
+WORLD_VERBS = {
+    "spawn",     # an agent enters the world at a position
+    "move",      # an agent changes position (absolute target)
+    "kill",      # an agent leaves the world; it becomes mortal history
+}
+
+# System tier — world machinery: errors, telemetry, lifecycle.
+SYS_VERBS = {"sys"}
+
+VERBS = WORK_VERBS | WORLD_VERBS | SYS_VERBS
 
 MOODS = {"flow", "focused", "stuck", "frustrated", "celebrating"}
 
