@@ -15,12 +15,16 @@ Laws honored (see ARCHITECTURE.md):
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import sys
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "world.db"
+DATA = Path(__file__).resolve().parent.parent / "data"
+# The one SQLite file. Overridable via OVERWORLD_DB so proofs and tests can
+# isolate (a mock-to-live seam) without touching the real world.
+DB_PATH = Path(os.environ.get("OVERWORLD_DB", DATA / "world.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (

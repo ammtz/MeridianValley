@@ -23,6 +23,6 @@ uvicorn server.main:app --reload  # → http://localhost:8000
 
 ## Repo-specific notes
 
-- `data/` is gitignored runtime state (`world.db`, the jsonl world log, agent workspaces). Never commit it.
+- `data/` is gitignored runtime state (`world.db` — the event log + state; agent workspaces). Never commit it.
 - `.claude/hooks/session-start.sh` prepares fresh web containers automatically.
 - Commit messages use envelope style: verb, actor, intent, effect.

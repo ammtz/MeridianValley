@@ -18,14 +18,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import sqlite3
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import worldlog
+from . import db, worker
 from .brain import HANDS, Session
 from .envelopes import envelope, validate
 
@@ -34,7 +36,43 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 
-app = FastAPI(title="Overworld — The Seed")
+# The world's single source of truth. main.py only APPENDS to the event log
+# (the emit path any actor may use); the Worker is the sole thing that applies
+# events to state. There is no other store — worldlog.jsonl is retired.
+CONN: sqlite3.Connection | None = None
+HEARTBEAT = 0.1  # seconds — the world's fixed tick (ARCHITECTURE invariant #5)
+
+
+async def _worker_loop() -> None:
+    """The world loop: on every heartbeat, the Worker applies any new events
+    from the log to state — one writer, one event at a time, in order."""
+    assert CONN is not None
+    while True:
+        try:
+            worker.pump(CONN)
+        except Exception as e:  # a bad event must never stop the world
+            log.warning("worker tick failed: %s", e)
+        await asyncio.sleep(HEARTBEAT)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global CONN
+    CONN = db.init_db()
+    tick = asyncio.create_task(_worker_loop())
+    log.info("world open — db=%s heartbeat=%ss", db.DB_PATH, HEARTBEAT)
+    try:
+        yield
+    finally:
+        tick.cancel()
+        try:
+            await tick
+        except asyncio.CancelledError:
+            pass
+        CONN.close()
+
+
+app = FastAPI(title="Overworld — The Seed", lifespan=lifespan)
 
 
 @app.get("/")
@@ -44,8 +82,8 @@ async def index() -> FileResponse:
 
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
-WORKSPACES = worldlog.DATA / "workspaces"
-WORKSPACES.mkdir(exist_ok=True)
+WORKSPACES = db.DATA / "workspaces"
+WORKSPACES.mkdir(parents=True, exist_ok=True)
 app.mount("/workspace", StaticFiles(directory=WORKSPACES), name="workspace")
 
 
@@ -60,7 +98,7 @@ class Room:
 
     async def emit(self, env: dict) -> None:
         log.info("emit %s %s→%s", env["type"], env["from"], env["to"])
-        worldlog.log(env, "out", self.sid)
+        db.append_event(CONN, env)          # every envelope enters the one log
         await self.ws.send_text(json.dumps(env))
 
     async def say(self, lines: list[str], *, expects: str | None = None,
@@ -222,7 +260,7 @@ async def ws_endpoint(ws: WebSocket) -> None:
             raw = await ws.receive_text()
             try:
                 env = validate(json.loads(raw))
-                worldlog.log(env, "in", room.sid)
+                db.append_event(CONN, env)   # gestures enter the same log
             except (ValueError, json.JSONDecodeError) as e:
                 await room.emit(envelope("sys", "world", "user",
                                          {"error": f"not in the language: {e}"}))

@@ -43,9 +43,9 @@ PROTOCOL.md           event protocol reference card — write a valid event by h
 server/envelopes.py   the event protocol (typed verbs + envelopes) — defined once
 server/db.py          SQLite persistence: append-only event log + state tables (W1)
 server/worker.py      the Worker: applies events to state, idempotent; replay (W3/W4)
-server/main.py        FastAPI + WebSocket bus (live seed loop)
+server/main.py        FastAPI + WebSocket bus; appends every envelope to the log, ticks the Worker (W5)
 server/brain.py       model orchestration (orchestrator + parallel workers)
-server/worldlog.py    legacy jsonl journal — superseded by server/db.py; retire in W5
+scripts/              proofs (w3/w4/w5) + export_jsonl.py (events → JSONL, read-only)
 web/index.html        the render surface: emits gestures, draws envelopes
 .claude/              session hooks so AI coding sessions land ready to run
 ```

@@ -23,7 +23,7 @@ The technical laws of the world. These constrain every story in `BACKLOG.md`.
 | Models | Hosted LLM API | No local GPU requirement for the MVP |
 | Maps & art | Tiled editor + purchased 16×16 tilesets | Maps as JSON the renderer loads; art is bought, not drawn |
 
-*Implemented so far (Epic 1): the event log, state tables, and the Worker live in `server/db.py` and `server/worker.py`; the verb protocol is carded in `PROTOCOL.md`. Render and agents are still ahead.*
+*Implemented so far (Epic 1 + W5): the event log, state tables, and the Worker live in `server/db.py` and `server/worker.py`; the live bus (`server/main.py`) writes every envelope to the log and ticks the Worker on a fixed heartbeat. The verb protocol is carded in `PROTOCOL.md`. Render and agents are still ahead.*
 
 ## Graduation triggers — upgrade only when these fire
 
