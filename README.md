@@ -22,7 +22,7 @@ contributor, human or AI, zero context assumed. Then:
 - [`DECISIONS.md`](DECISIONS.md) — standing decisions; consult before deciding.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the technical laws of the world.
 
-## Quickstart (current scaffold)
+## Quickstart
 
 ```bash
 cp .env.example .env        # add your ANTHROPIC_API_KEY (gitignored)
@@ -39,16 +39,22 @@ DIRECTIVE.md          how work gets done — read first
 BACKLOG.md            the stories
 DECISIONS.md          precedent; DOs / DON'Ts
 ARCHITECTURE.md       invariants, stack, graduation triggers
+PROTOCOL.md           event protocol reference card — write a valid event by hand
 server/envelopes.py   the event protocol (typed verbs + envelopes) — defined once
-server/main.py        FastAPI + WebSocket bus; the Worker (sole state mutator)
+server/db.py          SQLite persistence: append-only event log + state tables (W1)
+server/worker.py      the Worker: applies events to state, idempotent; replay (W3/W4)
+server/main.py        FastAPI + WebSocket bus (live seed loop)
 server/brain.py       model orchestration (orchestrator + parallel workers)
-server/worldlog.py    append-only event journal (to be superseded by story W1)
+server/worldlog.py    legacy jsonl journal — superseded by server/db.py; retire in W5
 web/index.html        the render surface: emits gestures, draws envelopes
 .claude/              session hooks so AI coding sessions land ready to run
 ```
 
 ## Status
 
-The current code is the proven seed loop: a working envelope bus with a
-single Worker and a browser render surface. The backlog evolves it into the
-persistent world described above, one story at a time.
+Epic 1 — *The World Persists* — is shipped: an append-only SQLite event log,
+a single idempotent Worker that is the sole state mutator, and proven replay
+(`python -m scripts.w3_apply_proof`, `python -m scripts.w4_replay_proof`). The
+live seed loop (envelope bus + browser render) still runs alongside it; the
+next brick (W5) wires that loop to the log. The backlog grows the rest, one
+story at a time.

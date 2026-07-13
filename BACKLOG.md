@@ -2,13 +2,17 @@
 
 Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for how to work it.
 
-## Epic 1 — The World Persists
-| ID | Story | Pts | Owner | Definition of Done |
-|---|---|---|---|---|
-| W1 | Database schema: `events` log + minimal state tables (`agents`, `positions`, `objects`) | 2 | B | Schema file runs clean and creates the database |
-| W2 | Event protocol reference card: every verb, its envelope, one example each, on one page | 2 | B | A reader with no context can write a valid event by hand |
-| W3 | Worker v0: read next event → validate → apply to state → repeat; idempotent | 3 | B | Injected test events mutate state correctly |
-| W4 | Replay proof: wipe state, re-run the full log, reach identical final state | 2 | H+B | Byte-identical state dump, twice in a row |
+## Now
+Epic 1 shipped (PR #2, merged 2026-07-13). Topmost unblocked story: **Epic 2 · V1** — build the first map (Product Owner). A bridging story (**W5**) sits under *Proposed* below, awaiting sign-off.
+
+## Epic 1 — The World Persists — ✅ shipped (PR #2, 2026-07-13)
+*Delivered on protocol amendment v1.1 (`spawn`/`move`/`kill`, DECISIONS #8). Proofs: `python -m scripts.w3_apply_proof` · `python -m scripts.w4_replay_proof`.*
+| ID | Story | Pts | Owner | Definition of Done | Done |
+|---|---|---|---|---|---|
+| W1 | Database schema: `events` log + minimal state tables (`agents`, `positions`, `objects`) | 2 | B | Schema file runs clean and creates the database | ✅ |
+| W2 | Event protocol reference card: every verb, its envelope, one example each, on one page | 2 | B | A reader with no context can write a valid event by hand | ✅ |
+| W3 | Worker v0: read next event → validate → apply to state → repeat; idempotent | 3 | B | Injected test events mutate state correctly | ✅ |
+| W4 | Replay proof: wipe state, re-run the full log, reach identical final state | 2 | H+B | Byte-identical state dump, twice in a row | ✅ |
 
 ## Epic 2 — The World Is Visible
 | ID | Story | Pts | Owner | Definition of Done |
@@ -32,6 +36,13 @@ Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for ho
 | H1 | Command console in the UI: typed human directive becomes a valid event | 3 | B | A typed command visibly changes the world |
 | H2 | World-to-human reporting: designated events surface as readable messages | 2 | B | A report is received without reading the database |
 | H3 | Replay scrubber: timeline slider re-renders any past moment from the log | 3 | B | Drag the slider, watch history replay |
+
+## Proposed — awaiting Product Owner sign-off
+| ID | Story | Pts | Owner | Definition of Done |
+|---|---|---|---|---|
+| W5 | Live bus writes to the log: `main.py` appends every envelope to the `events` table and runs the Worker; retire `worldlog.py` (jsonl) | 3 | B | A gesture in the browser lands as an event row and mutates state through the Worker |
+
+Epic 1 built the persistence engine, but the live WebSocket loop still journals to `data/world_log.jsonl`. W5 connects the running world to the engine and completes "the world persists" end-to-end. Proposed as the bridge into Epic 2; not started until pulled in.
 
 ## Icebox — out of scope until the Product Owner pulls them in
 External messaging bridges · real-world data integrations · multi-district economy · world authoring/templating tools · local model routing · publications.
