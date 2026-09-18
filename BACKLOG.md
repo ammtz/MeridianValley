@@ -3,7 +3,7 @@
 Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for how to work it.
 
 ## Now
-Epic 1 shipped (PR #2). W5 (Epic 1.5) delivered and in review — the live bus now persists to the single event log and the Worker consumes it on a heartbeat, closing the two-sources-of-truth gap. Topmost unblocked story: **Epic 2 · V1** — build the first map (Product Owner).
+Epic 1 shipped (PR #2). W6 (Epic 1.6) delivered and in review — the door now validates payloads and the Worker quarantines what it cannot apply. W5 (Epic 1.5) delivered and in review — the live bus now persists to the single event log and the Worker consumes it on a heartbeat, closing the two-sources-of-truth gap. Topmost unblocked story: **Epic 2 · V1** — build the first map (Product Owner).
 
 ## Epic 1 — The World Persists — ✅ shipped (PR #2, 2026-07-13)
 *Delivered on protocol amendment v1.1 (`spawn`/`move`/`kill`, DECISIONS #8). Proofs: `python -m scripts.w3_apply_proof` · `python -m scripts.w4_replay_proof`.*
@@ -44,6 +44,14 @@ Epic 1 shipped (PR #2). W5 (Epic 1.5) delivered and in review — the live bus n
 | W5 | Live bus writes to the log: `main.py` appends every envelope to the `events` table and runs the Worker; retire `worldlog.py` (jsonl) | 3 | B | A gesture over the live bus lands as an event row and mutates state through the Worker | 🟡 |
 
 Closed the two-sources-of-truth gap: the WebSocket bus no longer journals to `data/world_log.jsonl` (retired). Every envelope now enters the SQLite `events` log; the Worker applies it on a fixed heartbeat. JSONL remains available on demand via `scripts/export_jsonl.py`.
+
+## Epic 1.6 — The Door Holds — delivered, in review
+*Defect fix, raised by a review of this repo against the MERO canon on 2026-09-18. Proof: `python -m scripts.w6_door_proof` (W3/W4/W5 pass unchanged).*
+| ID | Story | Pts | Owner | Definition of Done | Done |
+|---|---|---|---|---|---|
+| W6 | The door validates world-verb payloads and the mood enum; the Worker quarantines an unapplicable event instead of wedging the cursor on it | 2 | B | A malformed `spawn` is refused at the door; one forced into the log is quarantined with a reason and the events behind it still apply; replay reproduces the quarantine | 🟡 |
+
+Two defects, one root cause: the protocol was enforced in one direction only. `envelope()` rejected unknown moods on the way out; `validate()` — the inbound path from the browser — checked the verb and nothing else, so `mood: "banana"` and a `spawn` with no `agent_id` both reached the append-only log. The Worker then raised on that event every tick, and because the cursor advanced only *after* a successful apply, it never advanced: every event behind the bad one was logged and never applied. `main.py` caught the exception and logged a warning, so the world stopped silently. The door now checks verb, mood and the world-verb payload; `quarantine` is a derived state table, so replay rebuilds it identically and the state digest covers it.
 
 ## Icebox — out of scope until the Product Owner pulls them in
 External messaging bridges · real-world data integrations · multi-district economy · world authoring/templating tools · local model routing · publications.
