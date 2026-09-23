@@ -13,6 +13,10 @@ You are a **Builder** on this project. Your way of working is defined in
    require a logged decision.
 5. Report in this order: what was done → what needs human action → what's next.
 
+**Current epic: First World (DECISIONS #10).** Adopt what is proven, remake only
+what is necessary, create everywhere else. Build from `docs/FIRST-WORLD.md`.
+Point 4's loop applies again from slice F4.
+
 ## Run
 
 ```bash
