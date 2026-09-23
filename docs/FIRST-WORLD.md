@@ -253,16 +253,28 @@ B's synthetic run activity is suppressed. This reuses the runtime's existing
 
 ## 9. Runbook (the target of M1)
 
+Run from **our forks**, not from npm, so M1 exercises the exact code M2 builds on.
+
 ```bash
-# Node 24.11+ (Paperclip's floor)
-npx paperclipai onboard --yes        # http://localhost:3100, embedded Postgres, local_trusted
-npx pixel-agents                     # open the printed URL WITH ?token=, approve hooks,
-                                     # Settings → Watch All Sessions (needed until M2)
-# Paperclip UI: create a company, hire a CEO on claude_local, assign an issue, wake it.
+# Prereqs: Node 24.11+ (Paperclip's floor), pnpm 9.15+, git
+git clone https://github.com/ammtz/paperclip-2
+git clone https://github.com/ammtz/pixel-agents-2
+
+# Terminal 1 — Paperclip (system of record)
+cd paperclip-2 && pnpm install && pnpm dev
+#   → API + UI at http://localhost:3100, embedded Postgres, local_trusted
+
+# Terminal 2 — Pixel Agents (projection)
+cd pixel-agents-2 && npm install && npm run build && node dist/cli.js
+#   → open the printed URL WITH ?token=, approve the hook install,
+#     Settings → Watch All Sessions (needed until M2)
 ```
 
-M3 onward replaces `npx pixel-agents` with a build from `pixel-agents-2` on
-branch `meridian/main`.
+In the Paperclip UI: create a company, hire a CEO on `claude_local`, assign
+it one small issue, and wake it.
+
+From M2 on, `pixel-agents-2` work happens on branch `meridian/main`.
+`paperclip-2` stays on `master`, unchanged, and syncs from upstream.
 
 ---
 
