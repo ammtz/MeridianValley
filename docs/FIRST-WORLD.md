@@ -1,11 +1,10 @@
 # FIRST WORLD — spec
 
-**Ruling (Product Owner, 2026-09-23):** "USE and ADOPT. We are not necessarily
-better than these guys. Fork their stuff, paste it together, and go from there.
-Working is the GOAL." Logged as DECISIONS #10.
+**Principle (DECISIONS #10):** adopt what is proven, remake only what is
+necessary, create everywhere else. Working is the goal.
 
-Meridian Valley's first world is two shipping MIT projects joined by a small
-bridge:
+Meridian Valley's first world stands on two mature MIT-licensed projects,
+joined by a bridge of our own:
 
 | Half | Project | What it gives us |
 |---|---|---|
@@ -13,9 +12,10 @@ bridge:
 | Watching | [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents) → fork `ammtz/pixel-agents` | Each agent as a pixel character in an office: walks, types, reads, raises a bubble when it needs the human |
 | Glue | `bridge/` in this repo | Paperclip employees appear as named characters in the office |
 
-Nothing here is new. That is the point: both halves already work, so the
-first world works on day one and every later story is an upgrade to a running
-thing.
+Both foundations already run in production for their users, so the first
+world works on day one and every later story upgrades a running system.
+Our effort goes where nothing exists yet: the bridge, the shared log, and
+the world built on top.
 
 ---
 
@@ -112,8 +112,8 @@ Meridian Valley idea on a base that already works.
 ---
 
 ## Rules for the builder
-- **Working beats elegant.** If an upstream feature already does the job, use
-  it, even if it is ugly.
+- **Adopt before building.** If an upstream feature already does the job, use
+  it. Remake only what blocks the world; create only what does not exist.
 - **Don't patch upstream unless a slice says to.** Glue lives in `bridge/`.
   Fork changes are small, isolated commits that could go back upstream.
 - **Don't send the Pixel Agents token anywhere.** It is a bearer capability,
