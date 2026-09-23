@@ -13,6 +13,7 @@ Standing decisions. Consult before deciding anything; extrapolate from precedent
 | 7 | 2026-07-11 | All real-world integrations removed from scope (icebox). | Focus on the mission's three deliverables only |
 | 8 | 2026-07-13 | Protocol amendment v1.1 **ratified** (via PR #2 merge): world-tier verbs `spawn`, `move`, `kill` join the frozen lexicon. Agents enter, move, and leave space through these three words only. | Epics 1–3 need world-physics events distinct from the work-orchestration verbs; keeps validation/replay guarantees while giving the Worker something to apply to `agents`/`positions` |
 | 9 | 2026-07-13 | For the Epic 1 delivery, the WIP-limit-of-1 was overridden once: all four W-stories were built and shipped as a single batch (PR #2) at Product Owner request. A deliberate one-time exception, not a change to Decision #6. | The Product Owner chose to review the epic as one pile; the default remains WIP = 1 |
+| 10 | 2026-09-23 | **First world: adopt, remake only what's necessary, create everywhere else.** Paperclip (system of record) and Pixel Agents (projection) are forked as foundations; the integration is a stream source inside the Pixel Agents fork. Spec: `docs/FIRST-WORLD.md` (AD-1…AD-7). Pauses the `ARCHITECTURE.md` stack table and Epics 2–3; this repo's event log is frozen until the office emits state Paperclip does not record. | Working is the goal. Proven foundations give a running world immediately; our effort goes where nothing exists yet |
 
 ## DOs
 - Delete before adding.
