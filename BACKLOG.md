@@ -3,7 +3,17 @@
 Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for how to work it.
 
 ## Now
-Epic 1 shipped (PR #2). W5 (Epic 1.5) delivered and in review — the live bus now persists to the single event log and the Worker consumes it on a heartbeat, closing the two-sources-of-truth gap. Topmost unblocked story: **Epic 2 · V1** — build the first map (Product Owner).
+**Epic 0 — First World** (DECISIONS #10, spec `docs/FIRST-WORLD.md`) supersedes Epics 2–3 until it works. Topmost unblocked story: **F0** (Product Owner forks both repos), then **F1**.
+
+| ID | Story | Owner | Definition of Done |
+|---|---|---|---|
+| F0 | Fork Paperclip + Pixel Agents into `ammtz` | H | Both forks exist; a session can push to them |
+| F1 | Run both side by side, zero code | B | A Paperclip agent's run is a character in the office; screenshot committed |
+| F2 | Bridge: Paperclip → Pixel Agents hook events | B | Keyless demo agent walks, types, raises a permission bubble; mapper tests pass |
+| F3 | Names on characters (fork change) | B | Office shows "name · role" per agent |
+| F4 | Upgrade 1: bridged events land in the `events` log | B | Replay rebuilds the office timeline from the log |
+
+*Previous "Now" (Epic 2 · V1 next) is paused, not deleted.*
 
 ## Epic 1 — The World Persists — ✅ shipped (PR #2, 2026-07-13)
 *Delivered on protocol amendment v1.1 (`spawn`/`move`/`kill`, DECISIONS #8). Proofs: `python -m scripts.w3_apply_proof` · `python -m scripts.w4_replay_proof`.*
