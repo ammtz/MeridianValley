@@ -12,7 +12,7 @@ joined by a bridge of our own:
 | Watching | [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents) → fork `ammtz/pixel-agents` | Each agent as a pixel character in an office: walks, types, reads, raises a bubble when it needs the human |
 | Glue | `bridge/` in this repo | Paperclip employees appear as named characters in the office |
 
-Both foundations already run in production for their users, so the first
+Both foundations already work, so the first
 world works on day one and every later story upgrades a running system.
 Our effort goes where nothing exists yet: the bridge, the shared log, and
 the world built on top.
