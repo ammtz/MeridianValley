@@ -3,15 +3,15 @@
 Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for how to work it.
 
 ## Now
-**Epic 0 — First World** (DECISIONS #10, spec `docs/FIRST-WORLD.md`) supersedes Epics 2–3 until it works. Topmost unblocked story: **F0** (Product Owner forks both repos), then **F1**.
+**Epic 0 — First World** (DECISIONS #10, spec `docs/FIRST-WORLD.md`) supersedes Epics 2–3 until it works. Topmost unblocked story: **M1**.
 
 | ID | Story | Owner | Definition of Done |
 |---|---|---|---|
-| F0 | Fork Paperclip + Pixel Agents into `ammtz` | H | Both forks exist; a session can push to them |
-| F1 | Run both side by side, zero code | B | A Paperclip agent's run is a character in the office; screenshot committed |
-| F2 | Bridge: Paperclip → Pixel Agents hook events | B | Keyless demo agent walks, types, raises a permission bubble; mapper tests pass |
-| F3 | Names on characters (fork change) | B | Office shows "name · role" per agent |
-| F4 | Upgrade 1: bridged events land in the `events` log | B | Replay rebuilds the office timeline from the log |
+| M0 | Fork Paperclip + Pixel Agents | H | ✅ `ammtz/paperclip-2`, `ammtz/pixel-agents-2` |
+| M1 | Zero-code smoke run | B (PC) | A Paperclip agent's run animates in the office; open facts on hooks settled |
+| M2 | Identity: hook enrichment + session alias | B | One character per employee across heartbeats |
+| M3 | `PaperclipSource`: org, run state, approval bubbles | B | Keyless agent spawns labelled, types, bubbles, with hooks off |
+| M4 | Approve from the office | B | Bubble click approves; Paperclip activity log records it |
 
 *Previous "Now" (Epic 2 · V1 next) is paused, not deleted.*
 

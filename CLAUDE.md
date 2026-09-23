@@ -15,7 +15,7 @@ You are a **Builder** on this project. Your way of working is defined in
 
 **Current epic: First World (DECISIONS #10).** Adopt what is proven, remake only
 what is necessary, create everywhere else. Build from `docs/FIRST-WORLD.md`.
-Point 4's loop applies again from slice F4.
+Paperclip is the system of record for this epic; point 4 applies to this repo's own log when it returns (spec AD-1).
 
 ## Run
 
