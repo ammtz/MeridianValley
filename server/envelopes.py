@@ -9,33 +9,52 @@ from __future__ import annotations
 import time
 from typing import Any
 
-# The lexicon, in tiers. Adding a verb is a versioned, logged decision
-# (see DECISIONS.md). Everything on the bus is one of these words.
+# The language, v2: seven words (DECISIONS #14, proposed).
+#
+# Two sets, moving in opposite directions:
+#   SAY  — what may be emitted today. It can shrink at an amendment.
+#   READ — what the log can be read with. It only ever grows, because the log
+#          is append-only and every word once written must still replay.
+# Adding or removing a word is a versioned, logged decision (DECISIONS.md).
 
-# Work tier — orchestration of stories and agents (LANGUAGE v1).
+# Room tier — the only words that move the world's state tables.
+ROOM_VERBS = {
+    "move",      # place an agent; a first placement is the join
+    "leave",     # an agent leaves the world, with a handoff; mortal history
+}
+
+# Work tier — log-only, no spatial effect.
 WORK_VERBS = {
-    "propose",   # a story/plan enters the world
-    "assign",    # work attaches to an agent
-    "develop",   # work happening: speech, findings, questions, chat
-    "boost",     # orchestrator gives an agent a push
-    "debug",     # something went wrong, being handled
-    "review",    # a gate: human judgment requested
-    "ship",      # done — the first move exists
-    "levelup",   # growth event
+    "ask",       # a request; may name what it waits on
+    "report",    # how it is going: speech, findings, failure (payload.tool)
+    "judge",     # a verdict: yes, no, or send it back — a person's call
+    "deliver",   # the finished thing is handed over
 }
 
-# World tier — physical events with spatial effect (amendment v1.1).
-# These are the only verbs that move the world's state tables.
-WORLD_VERBS = {
-    "spawn",     # an agent enters the world at a position
-    "move",      # an agent changes position (absolute target)
-    "kill",      # an agent leaves the world; it becomes mortal history
-}
-
-# System tier — world machinery: errors, telemetry, lifecycle.
+# Machinery — the room's own voice: refusals, telemetry, lifecycle.
 SYS_VERBS = {"sys"}
 
-VERBS = WORK_VERBS | WORLD_VERBS | SYS_VERBS
+SAY = ROOM_VERBS | WORK_VERBS | SYS_VERBS
+
+# Words from LANGUAGE v1 / amendment v1.1. Never said again; always readable.
+# Each maps to the word that replaced it.
+RETIRED = {
+    "spawn": "move",       # a first placement
+    "kill": "leave",
+    "propose": "report",   # report, tool "plan"
+    "assign": "ask",
+    "develop": "report",
+    "boost": "judge",      # a well-done is a yes
+    "debug": "report",     # report, tool "debug"
+    "review": "judge",
+    "ship": "deliver",
+    "levelup": "report",   # report, tool "levelup"
+}
+
+READ = SAY | set(RETIRED)
+
+# Words the Worker applies to state — every room word ever written.
+WORLD_VERBS = ROOM_VERBS | {"spawn", "kill"}
 
 MOODS = {"flow", "focused", "stuck", "frustrated", "celebrating"}
 
@@ -47,12 +66,12 @@ def envelope(
     payload: dict[str, Any] | None = None,
     *,
     story_id: str = "story.seed.first_problem",
-    phase: str = "develop",
+    phase: str = "develop",   # a phase, not a verb
     mood: str = "focused",
     points: dict[str, int] | None = None,
 ) -> dict[str, Any]:
-    if type_ not in VERBS:
-        raise ValueError(f"unknown word: {type_!r} — not in the language")
+    if type_ not in SAY:
+        raise ValueError(_refusal(type_))
     if mood not in MOODS:
         raise ValueError(f"unknown mood: {mood!r}")
     return {
@@ -70,12 +89,18 @@ def envelope(
 
 def validate(env: dict[str, Any]) -> dict[str, Any]:
     """Incoming envelopes from the frontend pass through here. Reject
-    anything that isn't a word in the language."""
+    anything that isn't a word the language speaks today."""
     if not isinstance(env, dict):
         raise ValueError("envelope must be an object")
-    if env.get("type") not in VERBS:
-        raise ValueError(f"unknown word: {env.get('type')!r}")
+    if env.get("type") not in SAY:
+        raise ValueError(_refusal(env.get("type")))
     env.setdefault("payload", {})
     env.setdefault("from", "user")
     env.setdefault("to", "seed")
     return env
+
+
+def _refusal(word: Any) -> str:
+    if word in RETIRED:
+        return f"retired word: {word!r} — say {RETIRED[word]!r}"
+    return f"unknown word: {word!r} — not in the language"

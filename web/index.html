@@ -138,8 +138,8 @@
    ============================================================ */
 
 const $ = id => document.getElementById(id);
-const V = { propose:"#E6DB74", assign:"#66D9EF", develop:"#A6E22E", boost:"#AE81FF",
-            debug:"#F92672", review:"#FD971F", ship:"#F92672", levelup:"#AE81FF", sys:"#75715E" };
+const V = { move:"#66D9EF", leave:"#75715E", ask:"#66D9EF", report:"#A6E22E",
+            judge:"#FD971F", deliver:"#F92672", sys:"#75715E" };
 
 /* ---------- transport (the swap-point, client side) ---------- */
 const Transport = {
@@ -157,7 +157,7 @@ const Transport = {
   send(env){ if(this.open) this.ws.send(JSON.stringify(env)); ticker(env); }
 };
 function gesture(kind, text){
-  Transport.send({ type:"develop", from:"user", to:"seed", payload:{kind, text} });
+  Transport.send({ type:"report", from:"user", to:"seed", payload:{kind, text} });
 }
 
 /* ---------- view state (render mirror only) ---------- */
@@ -173,26 +173,24 @@ function route(env){
   ticker(env);
   const p = env.payload||{};
   switch(env.type){
-    case "develop":
-      if(env.from==="seed" && p.say){ view.busy=false; enqueue(p.say, p.expects||null, env.mood); }
+    case "report":
+      if(p.tool==="plan"){ sprout(p); }
+      else if(p.tool==="levelup"){
+        if(p.name){ view.name=p.name; $("b-name").textContent=p.name; $("who").textContent=p.name; }
+        if(env.points && env.points.trust) setTrust(view.trust+env.points.trust);
+      }
+      else if(p.tool==="debug"){ if(p.error) console.warn("debug:", p.error); }
+      else if(env.from==="seed" && p.say){ view.busy=false; enqueue(p.say, p.expects||null, env.mood); }
       else if(/^mini\./.test(env.from) && p.finding!=null){ minReport(p.index, p.finding, p.artifacts||[]); }
       break;
-    case "propose": sprout(p); break;
-    case "assign": if(/^mini\./.test(env.to) && view.agents[p.index]){ /* already thinking */ } break;
-    case "ship": /* narration arrives via develop; mood handled there */ break;
-    case "levelup":
-      if(p.name){ view.name=p.name; $("b-name").textContent=p.name; $("who").textContent=p.name; }
-      if(env.points && env.points.trust) setTrust(view.trust+env.points.trust);
-      break;
+    case "ask": /* a mini is already thinking; its report lands the finding */ break;
+    case "deliver": /* narration arrives via report; mood handled there */ break;
     case "sys":
       if(p.busy){ view.busy=true; renderDlg(); }
       if(p.calls!=null){ $("t-calls").textContent=p.calls;
         $("t-tok").textContent=p.tokens_in+"/"+p.tokens_out;
         $("t-cost").textContent="$"+p.cost_usd; }
       if(p.error) enqueue(["("+p.error+")"], null, "frustrated");
-      break;
-    case "debug":
-      if(p.error) console.warn("debug:", p.error);
       break;
   }
 }

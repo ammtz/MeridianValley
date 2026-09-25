@@ -104,28 +104,28 @@ class Room:
     async def say(self, lines: list[str], *, expects: str | None = None,
                   mood: str = "focused") -> None:
         await self.emit(envelope(
-            "develop", "seed", "user",
+            "report", "seed", "user",
             {"say": lines, "expects": expects}, mood=mood,
         ))
 
     # ---------- verb handlers ----------
     async def handle(self, env: dict) -> None:
-        if env["type"] == "develop":
-            await self.on_develop(env["payload"])
+        if env["type"] == "report":
+            await self.on_report(env["payload"])
         elif env["type"] == "sys":
             pass  # telemetry from the client; accepted, unused for now
         else:
             await self.emit(envelope("sys", "world", "user",
                                      {"note": f"'{env['type']}' heard, not yet wired"}))
 
-    async def on_develop(self, p: dict) -> None:
+    async def on_report(self, p: dict) -> None:
         kind, text = p.get("kind", ""), str(p.get("text", "")).strip()
         s = self.session
 
         if kind == "name":
             s.name = (text or "Sprout")[:14]
-            await self.emit(envelope("levelup", "seed", "user",
-                                     {"name": s.name}, points={"trust": 1}))
+            await self.emit(envelope("report", "seed", "user",
+                                     {"tool": "levelup", "name": s.name}, points={"trust": 1}))
             await self.say([f"{s.name}. got it — i'm {s.name} now.",
                             "quick thing, so i know how to help: when life piles up, "
                             "what hits you most?"], expects="feel")
@@ -133,7 +133,7 @@ class Room:
 
         elif kind == "feel":
             s.feel = text
-            await self.emit(envelope("levelup", "seed", "user", {},
+            await self.emit(envelope("report", "seed", "user", {"tool": "levelup"},
                                      points={"trust": 1}))
             await self.say(["that helps more than you'd think.",
                             "okay — the real one now. tell me something that's been "
@@ -148,7 +148,7 @@ class Room:
 
         elif kind == "clarify":
             s.clarify.append({"q": self._last_q, "a": text})
-            await self.emit(envelope("levelup", "seed", "user", {},
+            await self.emit(envelope("report", "seed", "user", {"tool": "levelup"},
                                      points={"trust": 1}))
             await self.say(["mm — got it."])
             await self.step_interview()
@@ -160,8 +160,9 @@ class Room:
             await self.telemetry()
 
         else:
-            await self.emit(envelope("debug", "world", "user",
-                                     {"error": f"unknown develop kind: {kind!r}"}))
+            await self.emit(envelope("report", "world", "user",
+                                     {"tool": "debug",
+                                      "error": f"unknown report kind: {kind!r}"}))
 
     # ---------- the pipeline ----------
     async def step_interview(self) -> None:
@@ -187,8 +188,9 @@ class Room:
         try:
             plan = await asyncio.wait_for(s.decompose(), 30)
         except Exception as e:
-            await self.emit(envelope("debug", "seed", "user",
-                                     {"error": str(e)}, mood="frustrated"))
+            await self.emit(envelope("report", "seed", "user",
+                                     {"tool": "debug", "error": str(e)},
+                                     mood="frustrated"))
             await self.say(["hm — my thoughts scattered. tell me again, maybe "
                             "with different words?"], expects="problem",
                            mood="frustrated")
@@ -197,8 +199,8 @@ class Room:
 
         # the plan enters the world — geography about to emerge
         await self.emit(envelope(
-            "propose", "seed", "user",
-            {"domain": plan["domain"], "problemName": plan["problemName"],
+            "report", "seed", "user",
+            {"tool": "plan", "domain": plan["domain"], "problemName": plan["problemName"],
              "reflection": plan["reflection"],
              "agents": [{"name": a["name"], "role": a["role"]}
                         for a in plan["agents"]]},
@@ -210,12 +212,12 @@ class Room:
 
         # minis fire in parallel; each finding lands as its own envelope, live
         async def run(i: int) -> None:
-            await self.emit(envelope("assign", "seed", f"mini.{i}",
+            await self.emit(envelope("ask", "seed", f"mini.{i}",
                                      {"index": i, "ask": plan["agents"][i]["ask"],
                                       "hands": HANDS}))
             finding, artifacts = await s.run_worker(i)
             await self.emit(envelope(
-                "develop", f"mini.{i}", "seed",
+                "report", f"mini.{i}", "seed",
                 {"index": i, "finding": finding,
                  "artifacts": [{"name": a.split("/")[-1],
                                 "url": f"/workspace/{self.sid}/{a}"}
@@ -225,7 +227,7 @@ class Room:
         await asyncio.gather(*(run(i) for i in range(len(plan["agents"]))))
 
         syn = await s.synth()
-        await self.emit(envelope("ship", "seed", "user",
+        await self.emit(envelope("deliver", "seed", "user",
                                  {"firstStep": syn["firstStep"],
                                   "closing": syn["closing"]},
                                  phase="shipped", mood="celebrating"))

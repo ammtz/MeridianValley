@@ -31,9 +31,9 @@ def main() -> None:
         with client.websocket_connect("/ws") as ws:
             ws.receive_text()  # drain the seed's greeting
             ws.send_text(json.dumps(envelope(
-                "spawn", "user", "world",
+                "move", "user", "world",
                 {"agent_id": "scout", "name": "Scout", "x": 3, "y": 4})))
-            ws.receive_text()  # server ack ("spawn heard")
+            ws.receive_text()  # server ack ("move heard")
             ws.send_text(json.dumps(envelope(
                 "move", "user", "world", {"agent_id": "scout", "x": 7, "y": 2})))
             ws.receive_text()  # server ack ("move heard")
@@ -51,8 +51,8 @@ def main() -> None:
     print("agent row        :", dict(agent) if agent else None)
     print("position row     :", dict(pos) if pos else None)
 
-    assert "spawn" in verbs and "move" in verbs, "gestures did not reach the log"
-    assert agent and agent["status"] == "alive", "spawn did not mutate state"
+    assert verbs.count("move") == 2, "gestures did not reach the log"
+    assert agent and agent["status"] == "alive", "first move did not join"
     assert pos and (pos["x"], pos["y"]) == (7, 2), "move did not mutate state"
 
     print("\nW5 PASS — envelope → live bus → events log → Worker → state, end to end")
