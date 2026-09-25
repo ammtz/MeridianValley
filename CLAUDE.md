@@ -13,6 +13,10 @@ You are a **Builder** on this project. Your way of working is defined in
    require a logged decision.
 5. Report in this order: what was done → what needs human action → what's next.
 
+**Current epic: First World (DECISIONS #10).** Adopt what is proven, remake only
+what is necessary, create everywhere else. Build from `docs/FIRST-WORLD.md`.
+Paperclip is the system of record for this epic; point 4 applies to this repo's own log when it returns (spec AD-1).
+
 ## Run
 
 ```bash

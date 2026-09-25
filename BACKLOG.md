@@ -3,7 +3,19 @@
 Ordered product backlog. Topmost unblocked story wins. See `DIRECTIVE.md` for how to work it.
 
 ## Now
-Epic 1 shipped (PR #2). W6 (Epic 1.6) delivered and in review — the door now validates payloads and the Worker quarantines what it cannot apply. W5 (Epic 1.5) delivered and in review — the live bus now persists to the single event log and the Worker consumes it on a heartbeat, closing the two-sources-of-truth gap. Topmost unblocked story: **Epic 2 · V1** — build the first map (Product Owner).
+**Epic 0 — First World** (DECISIONS #10, spec `docs/FIRST-WORLD.md`) supersedes Epics 2–3 until it works. Topmost unblocked story: **M1**.
+
+| ID | Story | Owner | Definition of Done |
+|---|---|---|---|
+| M0 | Fork Paperclip + Pixel Agents | H | ✅ `ammtz/paperclip-2`, `ammtz/pixel-agents-2` |
+| M1 | Zero-code smoke run | B (PC) | A Paperclip agent's run animates in the office; open facts on hooks settled |
+| M2 | Identity: hook enrichment + session alias | B | One character per employee across heartbeats |
+| M3 | `PaperclipSource`: org, run state, approval bubbles | B | Keyless agent spawns labelled, types, bubbles, with hooks off |
+| M4 | Approve from the office | B | Bubble click approves; Paperclip activity log records it |
+
+*Previous "Now" (Epic 2 · V1 next) is paused, not deleted.*
+
+*Also in review, from before Epic 0:* W6 (Epic 1.6) delivered and in review — the door now validates payloads and the Worker quarantines what it cannot apply. W5 (Epic 1.5) delivered and in review — the live bus now persists to the single event log and the Worker consumes it on a heartbeat, closing the two-sources-of-truth gap.
 
 ## Epic 1 — The World Persists — ✅ shipped (PR #2, 2026-07-13)
 *Delivered on protocol amendment v1.1 (`spawn`/`move`/`kill`, DECISIONS #8). Proofs: `python -m scripts.w3_apply_proof` · `python -m scripts.w4_replay_proof`.*
