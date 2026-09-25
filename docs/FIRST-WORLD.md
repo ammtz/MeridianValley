@@ -300,9 +300,9 @@ Each milestone fits in one session and ships only with its acceptance met.
 
 ## 11. Open facts (owned by milestone)
 
-| [?] | Settled in |
-|---|---|
-| Hooks fire under `claude --print --output-format stream-json` as Paperclip invokes it (`execute.ts:885–887`) | M1 |
-| Watch All adopts sessions whose cwd is a Paperclip workspace | M1 (moot after M2) |
-| Exact payload shapes for `heartbeat.run.status` and approval `activity.logged` | M3 |
-| Approval decision route and body | M4 |
+| [?] | Settled in | Answer |
+|---|---|---|
+| Hooks fire under `claude --print --output-format stream-json` as Paperclip invokes it (`execute.ts:885–887`) | M1 | **Only on a resumed session.** 2026-09-23, 5 CEO runs over 2 Claude sessions. The first run of each session sent no hook at all to Pixel Agents. Every later run that resumed it sent `SessionStart(resume)`, `PreToolUse`, `PermissionRequest`, `PostToolUse` and `Stop`. Cause not found. Side effect: every tool raises `PermissionRequest`, so the office shows the CEO as "Needs approval" when nothing is waiting. |
+| Watch All adopts sessions whose cwd is a Paperclip workspace | M1 (moot after M2) | **Yes.** Both sessions were adopted by the file watcher, labelled `87a68f92c583`, the tail of the agent id. One agent became **two characters**, one per Claude session — the M2 identity problem, seen live. Screenshot: [`first-world/M1.png`](first-world/M1.png). |
+| Exact payload shapes for `heartbeat.run.status` and approval `activity.logged` | M3 | |
+| Approval decision route and body | M4 | |

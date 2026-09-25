@@ -24,6 +24,27 @@ from .db import STATE_TABLES
 from .envelopes import WORLD_VERBS
 
 
+class Unapplicable(Exception):
+    """An event that is in the log but cannot be applied to state.
+
+    The log is append-only, so a bad event cannot be removed. Before this
+    existed the Worker raised on every tick against the same event and the
+    cursor never advanced — one malformed envelope stopped the world for good,
+    silently. Now the reason is recorded in `quarantine` and the cursor moves
+    on. Deterministic, so replay reproduces the same quarantine rows.
+    """
+
+
+def _quarantine(conn: sqlite3.Connection, event_id: int,
+                env: dict[str, Any], err: Exception) -> None:
+    conn.execute(
+        "INSERT INTO quarantine (event_id, verb, reason) VALUES (?, ?, ?) "
+        "ON CONFLICT(event_id) DO UPDATE SET "
+        "  verb=excluded.verb, reason=excluded.reason",
+        (event_id, str(env.get("type")), f"{type(err).__name__}: {err}"),
+    )
+
+
 def _payload(env: dict[str, Any]) -> dict[str, Any]:
     return env.get("payload") or {}
 
@@ -40,7 +61,15 @@ def apply(conn: sqlite3.Connection, event_id: int, env: dict[str, Any]) -> None:
         return  # work/sys orchestration lives in the log only
 
     p = _payload(env)
-    aid = p["agent_id"]
+    aid = p.get("agent_id")
+    if not isinstance(aid, str) or not aid.strip():
+        raise Unapplicable("payload.agent_id is missing or not a name")
+
+    if verb in ("spawn", "move"):
+        try:
+            x, y = int(p["x"]), int(p["y"])
+        except (KeyError, TypeError, ValueError):
+            raise Unapplicable(f"{verb} needs whole-number x and y") from None
 
     if verb == "spawn":
         conn.execute(
@@ -54,7 +83,7 @@ def apply(conn: sqlite3.Connection, event_id: int, env: dict[str, Any]) -> None:
         conn.execute(
             "INSERT INTO positions (agent_id, x, y) VALUES (?, ?, ?) "
             "ON CONFLICT(agent_id) DO UPDATE SET x=excluded.x, y=excluded.y",
-            (aid, int(p.get("x", 0)), int(p.get("y", 0))),
+            (aid, x, y),
         )
 
     elif verb == "move":
@@ -73,7 +102,7 @@ def apply(conn: sqlite3.Connection, event_id: int, env: dict[str, Any]) -> None:
         conn.execute(
             "INSERT INTO positions (agent_id, x, y) VALUES (?, ?, ?) "
             "ON CONFLICT(agent_id) DO UPDATE SET x=excluded.x, y=excluded.y",
-            (aid, int(p["x"]), int(p["y"])),
+            (aid, x, y),
         )
 
     elif verb in ("leave", "kill"):   # kill is the v1.1 word, read forever
@@ -99,8 +128,13 @@ def pump(conn: sqlite3.Connection) -> int:
     ).fetchall()
     applied = 0
     for row in rows:
-        env = json.loads(row["envelope"])
-        apply(conn, row["id"], env)
+        try:
+            env = json.loads(row["envelope"])
+            apply(conn, row["id"], env)
+        except Exception as e:  # noqa: BLE001 — one bad row must not stop the world
+            _quarantine(conn, row["id"], env if isinstance(env, dict) else {}, e)
+        # The cursor advances either way. An event the Worker cannot apply is
+        # recorded and stepped over; it never blocks the events behind it.
         conn.execute(
             "UPDATE worker_cursor SET last_applied=? WHERE id=0", (row["id"],)
         )
@@ -138,6 +172,10 @@ def state_dump(conn: sqlite3.Connection) -> str:
         lines.append("pos " + json.dumps(dict(r), sort_keys=True, ensure_ascii=False))
     for r in conn.execute("SELECT id, kind, x, y FROM objects ORDER BY id"):
         lines.append("obj " + json.dumps(dict(r), sort_keys=True, ensure_ascii=False))
+    for r in conn.execute(
+        "SELECT event_id, verb, reason FROM quarantine ORDER BY event_id"
+    ):
+        lines.append("quar " + json.dumps(dict(r), sort_keys=True, ensure_ascii=False))
     return "\n".join(lines)
 
 

@@ -58,6 +58,17 @@ WORLD_VERBS = ROOM_VERBS | {"spawn", "kill"}
 
 MOODS = {"flow", "focused", "stuck", "frustrated", "celebrating"}
 
+# World verbs carry spatial payloads. The door checks these fields before an
+# envelope may reach the log — ARCHITECTURE invariant #3: invalid events are
+# rejected at the door, cheaply, before they can touch state. Without this the
+# verb was checked and the payload was not, so a malformed `spawn` reached the
+# append-only log and the Worker could never apply it.
+WORLD_PAYLOAD: dict[str, tuple[str, ...]] = {
+    "spawn": ("agent_id", "x", "y"),
+    "move": ("agent_id", "x", "y"),
+    "kill": ("agent_id",),
+}
+
 
 def envelope(
     type_: str,
@@ -97,6 +108,38 @@ def validate(env: dict[str, Any]) -> dict[str, Any]:
     env.setdefault("payload", {})
     env.setdefault("from", "user")
     env.setdefault("to", "seed")
+    env.setdefault("mood", "focused")
+
+    if not isinstance(env["payload"], dict):
+        raise ValueError("payload must be an object")
+
+    # The mood enum was enforced on the way out (envelope()) and not on the way
+    # in — two definition points for one rule. One door now, both directions.
+    if env["mood"] not in MOODS:
+        raise ValueError(f"unknown mood: {env['mood']!r}")
+
+    required = WORLD_PAYLOAD.get(verb)
+    if required is None:
+        return env  # work/sys verbs are log-only; no spatial contract to check
+
+    payload = env["payload"]
+    for field in required:
+        if field not in payload:
+            raise ValueError(f"{verb!r} requires payload.{field}")
+
+    aid = payload["agent_id"]
+    if not isinstance(aid, str) or not aid.strip():
+        raise ValueError(f"{verb!r} payload.agent_id must be a non-empty string")
+
+    for axis in ("x", "y"):
+        if axis in required:
+            try:
+                payload[axis] = int(payload[axis])
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"{verb!r} payload.{axis} must be a whole number"
+                ) from None
+
     return env
 
 
