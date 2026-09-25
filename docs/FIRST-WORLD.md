@@ -100,7 +100,9 @@ normalization Pixel Agents already has.
 and `PAPERCLIP_RUN_ID` set (`packages/adapters/claude-local/src/server/execute.ts:218–219`;
 `packages/adapter-utils/src/server-utils.ts:3108–3122`) **[v]**. The Pixel
 Agents hook script is a child of that Claude process, so it inherits those
-variables. The M2 change: the hook script copies them into the payload it
+variables **[v]** (`scripts/m1_hooks_probe.py`, 2026-09-25: every hook process
+sees all three, and `PAPERCLIP_API_KEY` too, so the enrichment must exclude
+it by name, §8). The M2 change: the hook script copies them into the payload it
 posts. That joins channel A to channel B with no guessing on working
 directory or session id.
 
@@ -302,7 +304,7 @@ Each milestone fits in one session and ships only with its acceptance met.
 
 | [?] | Settled in | Answer |
 |---|---|---|
-| Hooks fire under `claude --print --output-format stream-json` as Paperclip invokes it (`execute.ts:885–887`) | M1 | **Only on a resumed session.** 2026-09-23, 5 CEO runs over 2 Claude sessions. The first run of each session sent no hook at all to Pixel Agents. Every later run that resumed it sent `SessionStart(resume)`, `PreToolUse`, `PermissionRequest`, `PostToolUse` and `Stop`. Cause not found. Side effect: every tool raises `PermissionRequest`, so the office shows the CEO as "Needs approval" when nothing is waiting. |
+| Hooks fire under `claude --print --output-format stream-json` as Paperclip invokes it (`execute.ts:885–887`) | M1 | **Only on a resumed session.** 2026-09-23, 5 CEO runs over 2 Claude sessions. The first run of each session sent no hook at all to Pixel Agents. Every later run that resumed it sent `SessionStart(resume)`, `PreToolUse`, `PermissionRequest`, `PostToolUse` and `Stop`. Cause not found. Side effect: every tool raises `PermissionRequest`, so the office shows the CEO as "Needs approval" when nothing is waiting. **Re-tested 2026-09-25, not reproduced in isolation** (`python -m scripts.m1_hooks_probe --pixel-agents ../pixel-agents-2`: the real `claude` with Paperclip's flags against a fake API, and the real Pixel Agents server with its own hook install). A fresh session fires every hook, and Pixel Agents acknowledged all 15 hook POSTs across a fresh, a resumed and a fresh heartbeat. Neither Claude nor Pixel Agents drops a first run, so the 2026-09-23 gap came from that run's setup. Unchecked candidates: hooks installed after the first run started; Paperclip's per-run flags the probe omits (`--add-dir`, `--append-system-prompt-file`, `--mcp-config --strict-mcp-config`, `--model`); the Windows PC itself. `PermissionRequest` never fired under `--dangerously-skip-permissions`, which suggests the PC run had it off. Identity is worse than one character per session: **one per heartbeat**, 3 characters for 3 runs. A resumed session is re-adopted as a new character after its `SessionEnd`. |
 | Watch All adopts sessions whose cwd is a Paperclip workspace | M1 (moot after M2) | **Yes.** Both sessions were adopted by the file watcher, labelled `87a68f92c583`, the tail of the agent id. One agent became **two characters**, one per Claude session — the M2 identity problem, seen live. Screenshot: [`first-world/M1.png`](first-world/M1.png). |
 | Exact payload shapes for `heartbeat.run.status` and approval `activity.logged` | M3 | |
 | Approval decision route and body | M4 | |
