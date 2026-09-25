@@ -57,6 +57,15 @@ CREATE TABLE IF NOT EXISTS objects (
     y    INTEGER NOT NULL
 );
 
+-- Events that reached the log but could not be applied. Derived state, so a
+-- replay rebuilds it identically; the log itself is never edited (the world
+-- cannot forget a bad event, but it must not choke on one either).
+CREATE TABLE IF NOT EXISTS quarantine (
+    event_id INTEGER PRIMARY KEY,   -- the offending event, still in the log
+    verb     TEXT    NOT NULL,
+    reason   TEXT    NOT NULL       -- why the Worker could not apply it
+);
+
 -- The Worker's cursor: the highest event id already applied to state. Lets the
 -- single writer resume without re-applying, and makes replay simply "reset to
 -- 0, wipe derived tables, pump."
@@ -68,7 +77,7 @@ CREATE TABLE IF NOT EXISTS worker_cursor (
 
 # Derived tables, in the order a state dump reads them. The log is NOT here —
 # it is never wiped.
-STATE_TABLES = ("agents", "positions", "objects")
+STATE_TABLES = ("agents", "positions", "objects", "quarantine")
 
 
 def connect(path: Path | str = DB_PATH) -> sqlite3.Connection:

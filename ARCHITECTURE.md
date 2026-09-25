@@ -6,7 +6,7 @@ The technical laws of the world. These constrain every story in `BACKLOG.md`.
 
 1. **Append-only event log.** Every change to the world is an event written to the log. The log is never edited or truncated. Replaying the log from zero must reproduce the exact world state.
 2. **One writer.** A single Worker process is the only thing that mutates world state. Agents and humans *request* changes by emitting events; the Worker applies them one at a time, in order.
-3. **Typed protocol.** All events use a frozen vocabulary of typed verbs with enforced envelopes (v1.1). Invalid events are rejected at the door, cheaply, before they can touch state.
+3. **Typed protocol.** All events use a frozen vocabulary of typed verbs with enforced envelopes (v1.1). Invalid events are rejected at the door, cheaply, before they can touch state — the door checks the verb, the mood, and the payload the world verbs promise (`server.envelopes.validate`). Anything that still reaches the log and cannot be applied is quarantined with its reason, never retried forever.
 4. **Mortal agents, immortal world.** Agents are separate processes the Worker can spawn and kill. Killing any agent must never affect the world loop or the render.
 5. **Fixed heartbeat.** The world ticks at a fixed cadence. Rhythm makes progress observable and results comparable.
 6. **Render is a pure function of state.** The renderer reads state and draws it. It never writes, never decides.
@@ -23,7 +23,7 @@ The technical laws of the world. These constrain every story in `BACKLOG.md`.
 | Models | Hosted LLM API | No local GPU requirement for the MVP |
 | Maps & art | Tiled editor + purchased 16×16 tilesets | Maps as JSON the renderer loads; art is bought, not drawn |
 
-*Implemented so far (Epic 1 + W5): the event log, state tables, and the Worker live in `server/db.py` and `server/worker.py`; the live bus (`server/main.py`) writes every envelope to the log and ticks the Worker on a fixed heartbeat. The verb protocol is carded in `PROTOCOL.md`. Render and agents are still ahead.*
+*Implemented so far (Epic 1 + W5 + W6): the event log, state tables, and the Worker live in `server/db.py` and `server/worker.py`; the live bus (`server/main.py`) writes every envelope to the log and ticks the Worker on a fixed heartbeat. The door (`server/envelopes.py`) validates verb, mood and world-verb payload before anything is appended, and the Worker quarantines what it cannot apply instead of stopping. The verb protocol is carded in `PROTOCOL.md`. Render and agents are still ahead.*
 
 ## Graduation triggers — upgrade only when these fire
 
