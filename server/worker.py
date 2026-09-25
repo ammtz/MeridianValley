@@ -53,7 +53,8 @@ def apply(conn: sqlite3.Connection, event_id: int, env: dict[str, Any]) -> None:
     """Apply ONE event to state. This is the only function that writes state.
 
     Work-tier and sys verbs are log-only: they persist in `events` but carry
-    no spatial effect, so state is untouched. Only world verbs move the world.
+    no spatial effect, so state is untouched. Only room words move the world:
+    `move` and `leave`, plus `spawn` and `kill`, which older logs carry.
     """
     verb = env.get("type")
     if verb not in WORLD_VERBS:
@@ -89,16 +90,23 @@ def apply(conn: sqlite3.Connection, event_id: int, env: dict[str, Any]) -> None:
         row = conn.execute(
             "SELECT status FROM agents WHERE id=?", (aid,)
         ).fetchone()
-        if row is None or row["status"] != "alive":
-            return  # cannot move a nonexistent or dead agent
+        if row is None:
+            # A first placement is the join (LANGUAGE v2): the agent enters.
+            conn.execute(
+                "INSERT INTO agents (id, name, status, born_ev, died_ev) "
+                "VALUES (?, ?, 'alive', ?, NULL)",
+                (aid, p.get("name"), event_id),
+            )
+        elif row["status"] != "alive":
+            return  # an agent that left stays gone; its history is kept
         conn.execute(
             "INSERT INTO positions (agent_id, x, y) VALUES (?, ?, ?) "
             "ON CONFLICT(agent_id) DO UPDATE SET x=excluded.x, y=excluded.y",
             (aid, x, y),
         )
 
-    elif verb == "kill":
-        # died_ev uses COALESCE so a repeated kill keeps the first death's id,
+    elif verb in ("leave", "kill"):   # kill is the v1.1 word, read forever
+        # died_ev uses COALESCE so a repeated leave keeps the first one's id,
         # making the apply idempotent.
         conn.execute(
             "UPDATE agents SET status='dead', died_ev=COALESCE(died_ev, ?) "

@@ -19,13 +19,13 @@ def main() -> None:
     conn = init_db(db)
 
     for e in [
-        envelope("spawn", "world", "alice",
+        envelope("move", "world", "alice",
                  {"agent_id": "alice", "name": "Alice", "x": 1, "y": 1}),
-        envelope("spawn", "world", "bob",
+        envelope("move", "world", "bob",
                  {"agent_id": "bob", "name": "Bob", "x": 5, "y": 5}),
         envelope("move", "alice", "world", {"agent_id": "alice", "x": 2, "y": 3}),
         envelope("move", "bob", "world", {"agent_id": "bob", "x": 9, "y": 0}),
-        envelope("kill", "world", "bob", {"agent_id": "bob"}),
+        envelope("leave", "world", "bob", {"agent_id": "bob"}),
     ]:
         append_event(conn, e)
 

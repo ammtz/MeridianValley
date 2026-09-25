@@ -25,11 +25,13 @@ from server.worker import pump, replay, state_digest
 # Envelopes that must never reach the log, and why.
 REFUSED = [
     ({"type": "levelupp", "payload": {}}, "not a word in the language"),
-    ({"type": "spawn", "payload": {"x": 1, "y": 1}}, "spawn with no agent_id"),
+    ({"type": "move", "payload": {"x": 1, "y": 1}}, "move with no agent_id"),
     ({"type": "move", "payload": {"agent_id": "a", "x": "over there", "y": 1}},
      "x is not a number"),
-    ({"type": "kill", "payload": {"agent_id": "   "}}, "agent_id is blank"),
-    ({"type": "develop", "mood": "banana"}, "mood is not in the enum"),
+    ({"type": "leave", "payload": {"agent_id": "   "}}, "agent_id is blank"),
+    ({"type": "spawn", "payload": {"agent_id": "a", "x": 1, "y": 1}},
+     "a retired word"),
+    ({"type": "report", "mood": "banana"}, "mood is not in the enum"),
 ]
 
 
@@ -46,10 +48,10 @@ def main() -> None:
         else:  # pragma: no cover - the proof fails loudly if the door opens
             raise SystemExit(f"DOOR OPEN: {why} was accepted")
 
-    good = validate({"type": "spawn", "from": "world", "to": "alice",
+    good = validate({"type": "move", "from": "world", "to": "alice",
                      "payload": {"agent_id": "alice", "x": "3", "y": 4}})
     assert good["payload"] == {"agent_id": "alice", "x": 3, "y": 4}
-    print("  accepted a valid spawn; x coerced to a whole number")
+    print("  accepted a valid move; x coerced to a whole number")
     print(f"  events in the log after {len(REFUSED)} refusals:",
           conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
 
@@ -62,7 +64,7 @@ def main() -> None:
     )
     conn.commit()
     for e in [
-        envelope("spawn", "world", "alice",
+        envelope("move", "world", "alice",
                  {"agent_id": "alice", "name": "Alice", "x": 1, "y": 1}),
         envelope("move", "alice", "world", {"agent_id": "alice", "x": 2, "y": 3}),
     ]:

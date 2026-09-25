@@ -1,21 +1,22 @@
-# EVENT PROTOCOL — reference card (v1.1)
+# EVENT PROTOCOL — reference card (v2, seven words)
 
 Every change to the world is one **event**: a JSON **envelope** whose `type` is
-a **verb** from the frozen lexicon. Invalid verbs are rejected at the door.
+a **verb** from the language. A word the language does not speak today is
+rejected at the door, and the refusal names the word that replaced it.
 This one page is enough to write a valid event by hand.
 
 The lexicon is defined once in `server/envelopes.py`; changing it is a logged
-decision in `DECISIONS.md` (this card is at v1.1).
+decision in `DECISIONS.md` (this card is at v2, DECISIONS #14, proposed).
 
 ## The envelope
 
 ```json
 {
-  "type": "spawn",          // the verb — must be in the lexicon (required)
+  "type": "move",           // the verb — must be in the lexicon (required)
   "from": "world",          // who emits it
   "to": "alice",            // who/what it concerns
   "story_id": "story.seed.first_problem",
-  "phase": "develop",
+  "phase": "develop",       // a phase, not a verb
   "mood": "focused",        // one of: flow, focused, stuck, frustrated, celebrating
   "points": {},
   "ts": 1752380000000,      // ms since epoch
@@ -24,44 +25,62 @@ decision in `DECISIONS.md` (this card is at v1.1).
 ```
 
 Build one in Python with `server.envelopes.envelope(type, from, to, payload)` —
-it fills defaults and rejects unknown verbs and moods.
+it fills defaults and rejects unknown or retired verbs and moods.
 
 ## Verbs
 
-Three tiers. Only **world** verbs mutate the state tables; **work** and **sys**
-verbs are recorded in the log but change no spatial state.
+Seven words. Only **room** words mutate the state tables; **work** and **sys**
+words are recorded in the log but change no spatial state.
 
-### World tier — moves the world (v1.1)
+### Room — moves the world
 
 | Verb | Effect on state | Required payload | Example payload |
 |---|---|---|---|
-| `spawn` | agent becomes `alive` at a position | `agent_id`, `x`, `y` (opt. `name`) | `{"agent_id":"alice","name":"Alice","x":1,"y":1}` |
-| `move`  | agent's position set to an absolute target | `agent_id`, `x`, `y` | `{"agent_id":"alice","x":2,"y":3}` |
-| `kill`  | agent becomes `dead` (mortal history) | `agent_id` | `{"agent_id":"bob"}` |
+| `move`  | a first placement is the join: the agent becomes `alive` there. After that, its position is set to an absolute target | `agent_id`, `x`, `y` (opt. `name` on the first) | `{"agent_id":"alice","name":"Alice","x":1,"y":1}` |
+| `leave` | agent becomes `dead` (mortal history) | `agent_id` | `{"agent_id":"bob"}` |
 
-`move` on a nonexistent or dead agent is ignored. Targets are absolute, so
-applying the same `spawn`/`move`/`kill` twice leaves state unchanged.
+`move` on an agent that left is ignored. Targets are absolute, so applying the
+same `move`/`leave` twice leaves state unchanged.
 
-### Work tier — orchestration (LANGUAGE v1, log-only)
-
-| Verb | Meaning |
-|---|---|
-| `propose` | a story/plan enters the world |
-| `assign` | work attaches to an agent |
-| `develop` | work happening: speech, findings, questions, chat |
-| `boost` | orchestrator gives an agent a push |
-| `debug` | something went wrong, being handled |
-| `review` | a gate: human judgment requested |
-| `ship` | done — the move exists |
-| `levelup` | growth event |
-
-Example: `{"type":"develop","from":"alice","to":"world","payload":{"text":"scanning the district"}}`
-
-### System tier
+### Work — log-only
 
 | Verb | Meaning |
 |---|---|
-| `sys` | world machinery: errors, telemetry, lifecycle |
+| `ask` | a request; may name what it waits on |
+| `report` | how it is going: speech, findings, failure. `payload.tool` names the kind: `plan`, `levelup`, `debug` |
+| `judge` | a verdict: yes, no, or send it back — a person's call |
+| `deliver` | the finished thing is handed over |
+
+Example: `{"type":"report","from":"alice","to":"world","payload":{"text":"scanning the district"}}`
+
+### Machinery
+
+| Verb | Meaning |
+|---|---|
+| `sys` | the room's own voice: refusals, telemetry, lifecycle |
+
+### Retired words — never said, always read
+
+The log is append-only, so a word once written must replay forever. What may
+be **said** can shrink; what can be **read** only grows. These ten are refused
+at emission and still applied on replay:
+
+| Retired | Say instead |
+|---|---|
+| `spawn` | `move` (a first placement) |
+| `kill` | `leave` |
+| `propose` | `report`, tool `plan` |
+| `assign` | `ask` |
+| `develop` | `report` |
+| `boost` | `judge` (a yes) |
+| `debug` | `report`, tool `debug` |
+| `review` | `judge` |
+| `ship` | `deliver` |
+| `levelup` | `report`, tool `levelup` |
+
+Proof: `python -m scripts.seven_words_proof` — every retired word is refused,
+and a log in the old words reaches the same state as the same history in the
+seven.
 
 ## Write one by hand
 
