@@ -54,8 +54,12 @@ web/index.html        the render surface: emits gestures, draws envelopes
 
 Epic 1 — *The World Persists* — is shipped: an append-only SQLite event log,
 a single idempotent Worker that is the sole state mutator, and proven replay
-(`python -m scripts.w3_apply_proof`, `python -m scripts.w4_replay_proof`). The
-event language is seven words (`PROTOCOL.md`, `python -m scripts.seven_words_proof`). The
-live seed loop (envelope bus + browser render) still runs alongside it; the
-next brick (W5) wires that loop to the log. The backlog grows the rest, one
-story at a time.
+(`python -m scripts.w3_apply_proof`, `python -m scripts.w4_replay_proof`).
+W5 closed the two-sources-of-truth gap — the live bus now appends every
+envelope to that same log and the Worker consumes it on a fixed heartbeat
+(`python -m scripts.w5_live_proof`). W6 hardened the door and stopped one
+malformed event from wedging the world (`python -m scripts.w6_door_proof`).
+The event language is seven words (`PROTOCOL.md`,
+`python -m scripts.seven_words_proof`).
+Next up is Epic 2 — the world becomes visible. The backlog grows the rest,
+one story at a time.

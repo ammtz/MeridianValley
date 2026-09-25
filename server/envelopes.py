@@ -67,6 +67,7 @@ WORLD_PAYLOAD: dict[str, tuple[str, ...]] = {
     "spawn": ("agent_id", "x", "y"),
     "move": ("agent_id", "x", "y"),
     "kill": ("agent_id",),
+    "leave": ("agent_id",),
 }
 
 
@@ -103,8 +104,9 @@ def validate(env: dict[str, Any]) -> dict[str, Any]:
     anything that isn't a word the language speaks today."""
     if not isinstance(env, dict):
         raise ValueError("envelope must be an object")
-    if env.get("type") not in SAY:
-        raise ValueError(_refusal(env.get("type")))
+    verb = env.get("type")
+    if verb not in SAY:
+        raise ValueError(_refusal(verb))
     env.setdefault("payload", {})
     env.setdefault("from", "user")
     env.setdefault("to", "seed")
