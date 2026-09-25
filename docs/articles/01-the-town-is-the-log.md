@@ -77,19 +77,24 @@ The first commit message reads: *"The language is the physical world. Worker is
 sole mutator."* That was the idea I most wanted to test.
 
 In Meridian Valley, the protocol isn't a transport detail. It's the laws of
-nature. There are three tiers of verbs:
+nature. There are seven words, in three tiers:
 
-| Tier | Verbs | What they do |
+| Tier | Words | What they do |
 |---|---|---|
-| **World** | `spawn`, `move`, `kill` | The only verbs that change space. They're how agents enter, move, and leave. |
-| **Work** | `propose`, `assign`, `develop`, `boost`, `debug`, `review`, `ship`, `levelup` | The story of the work. Recorded, but nothing moves. |
-| **System** | `sys` | The world's machinery: errors, telemetry, lifecycle. |
+| **Room** | `move`, `leave` | The only words that change space. A first `move` is how an agent enters; `leave` is how it goes. |
+| **Work** | `ask`, `report`, `judge`, `deliver` | The story of the work: a request, how it is going, a person's verdict, the finished thing. Recorded, but nothing moves. |
+| **System** | `sys` | The room's own voice: a refusal and its reason, telemetry, lifecycle. |
+
+Seven words, seven acts, no two words for the same act. It started as twelve.
+The log is append-only, so the old words can never be un-written: what an
+agent may *say* shrank to seven, and what the log can be *read* with only
+grows. Every old event still replays.
 
 An event is a small JSON envelope:
 
 ```json
 {
-  "type": "spawn",
+  "type": "move",
   "from": "world",
   "to": "alice",
   "mood": "focused",
