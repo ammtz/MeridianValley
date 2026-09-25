@@ -11,7 +11,10 @@ You are a **Builder** on this project. Your way of working is defined in
    The Worker is the sole state mutator. The event protocol
    (`server/envelopes.py`, carded in `PROTOCOL.md`) is frozen; new verbs
    require a logged decision.
-5. Report in this order: what was done → what needs human action → what's next.
+5. **Never sign as the Product Owner** (DECISIONS #11). Anything public that
+   carries their name needs their specific approval; drafts get the
+   placeholder byline `[author · pending Product Owner approval]`.
+6. Report in this order: what was done → what needs human action → what's next.
 
 **Current epic: First World (DECISIONS #10).** Adopt what is proven, remake only
 what is necessary, create everywhere else. Build from `docs/FIRST-WORLD.md`.
