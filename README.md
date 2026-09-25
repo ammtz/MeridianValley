@@ -45,7 +45,7 @@ server/db.py          SQLite persistence: append-only event log + state tables (
 server/worker.py      the Worker: applies events to state, idempotent; replay (W3/W4)
 server/main.py        FastAPI + WebSocket bus; appends every envelope to the log, ticks the Worker (W5)
 server/brain.py       model orchestration (orchestrator + parallel workers)
-scripts/              proofs (w3/w4/w5) + export_jsonl.py (events → JSONL, read-only)
+scripts/              proofs (w3/w4/w5/w6) + export_jsonl.py (events → JSONL, read-only)
 web/index.html        the render surface: emits gestures, draws envelopes
 .claude/              session hooks so AI coding sessions land ready to run
 ```
@@ -54,7 +54,10 @@ web/index.html        the render surface: emits gestures, draws envelopes
 
 Epic 1 — *The World Persists* — is shipped: an append-only SQLite event log,
 a single idempotent Worker that is the sole state mutator, and proven replay
-(`python -m scripts.w3_apply_proof`, `python -m scripts.w4_replay_proof`). The
-live seed loop (envelope bus + browser render) still runs alongside it; the
-next brick (W5) wires that loop to the log. The backlog grows the rest, one
-story at a time.
+(`python -m scripts.w3_apply_proof`, `python -m scripts.w4_replay_proof`).
+W5 closed the two-sources-of-truth gap — the live bus now appends every
+envelope to that same log and the Worker consumes it on a fixed heartbeat
+(`python -m scripts.w5_live_proof`). W6 hardened the door and stopped one
+malformed event from wedging the world (`python -m scripts.w6_door_proof`).
+Next up is Epic 2 — the world becomes visible. The backlog grows the rest,
+one story at a time.

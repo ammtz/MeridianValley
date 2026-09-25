@@ -39,6 +39,17 @@ VERBS = WORK_VERBS | WORLD_VERBS | SYS_VERBS
 
 MOODS = {"flow", "focused", "stuck", "frustrated", "celebrating"}
 
+# World verbs carry spatial payloads. The door checks these fields before an
+# envelope may reach the log — ARCHITECTURE invariant #3: invalid events are
+# rejected at the door, cheaply, before they can touch state. Without this the
+# verb was checked and the payload was not, so a malformed `spawn` reached the
+# append-only log and the Worker could never apply it.
+WORLD_PAYLOAD: dict[str, tuple[str, ...]] = {
+    "spawn": ("agent_id", "x", "y"),
+    "move": ("agent_id", "x", "y"),
+    "kill": ("agent_id",),
+}
+
 
 def envelope(
     type_: str,
@@ -69,13 +80,53 @@ def envelope(
 
 
 def validate(env: dict[str, Any]) -> dict[str, Any]:
-    """Incoming envelopes from the frontend pass through here. Reject
-    anything that isn't a word in the language."""
+    """The door. Every envelope from outside passes through here before it is
+    appended to the log. Reject anything that is not a word in the language,
+    and — for the world verbs — anything the Worker could not later apply.
+
+    Raises ValueError with a plain reason; the caller turns that into a `sys`
+    envelope so a refusal is itself recorded. Silence is never the signal.
+    """
     if not isinstance(env, dict):
         raise ValueError("envelope must be an object")
-    if env.get("type") not in VERBS:
-        raise ValueError(f"unknown word: {env.get('type')!r}")
+
+    verb = env.get("type")
+    if verb not in VERBS:
+        raise ValueError(f"unknown word: {verb!r}")
+
     env.setdefault("payload", {})
     env.setdefault("from", "user")
     env.setdefault("to", "seed")
+    env.setdefault("mood", "focused")
+
+    if not isinstance(env["payload"], dict):
+        raise ValueError("payload must be an object")
+
+    # The mood enum was enforced on the way out (envelope()) and not on the way
+    # in — two definition points for one rule. One door now, both directions.
+    if env["mood"] not in MOODS:
+        raise ValueError(f"unknown mood: {env['mood']!r}")
+
+    required = WORLD_PAYLOAD.get(verb)
+    if required is None:
+        return env  # work/sys verbs are log-only; no spatial contract to check
+
+    payload = env["payload"]
+    for field in required:
+        if field not in payload:
+            raise ValueError(f"{verb!r} requires payload.{field}")
+
+    aid = payload["agent_id"]
+    if not isinstance(aid, str) or not aid.strip():
+        raise ValueError(f"{verb!r} payload.agent_id must be a non-empty string")
+
+    for axis in ("x", "y"):
+        if axis in required:
+            try:
+                payload[axis] = int(payload[axis])
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"{verb!r} payload.{axis} must be a whole number"
+                ) from None
+
     return env
